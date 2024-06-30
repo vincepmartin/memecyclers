@@ -4,7 +4,7 @@ version = "1.1.0"
 edition = "2021"
 
 [dependencies]
-rocket = {version = "0.5.1", features = ["json"]}
-# serde = {version = "1.0.203", features = ["derive"]}
-# serde_json = "1.0.117"
-# rocket_contrib = {version = "0.4.11", features = ["json"]}
+dotenvy = "0.15"
+diesel = { version = "2.2.0", features = ["postgres", "r2d2"] }
+rocket = { version = "0.5.1", features = ["json"] }
+rocket_sync_db_pools = { version = "0.1.0", features = ["diesel_postgres_pool"]}
