@@ -31,9 +31,6 @@ use models::Ride;
 
 // Create our DB struct...
 #[database("rides_db")]
-// We are using the Diesel client.
-// Before this I was confused, I was using the Rust-Postgres client and
-// mistakenly trying ti implement the diesel one.
 struct RidesDb(diesel::PgConnection);
 
 // Return a particular ride based on id.
@@ -42,7 +39,6 @@ async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
     use schema::rides::dsl::*;
     // The move tells the closure below to BORROW all variables that it needs.
     // Since they borrow it, the higher level items can't destroy it until we are done with it.
-    // If it's like this, it might solve it... conn.run(move |conn| {
 
     conn.run(move |conn| {
         rides
@@ -57,6 +53,7 @@ async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
     .map(Json)
 }
 
+// TODO: Implement this.
 // Get a list of all rides in the DB.
 // #[get("/ride")]
 // fn get_all_ride_ids() -> Json<Vec<Ride>> {}
@@ -66,8 +63,6 @@ async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
 // fn post_ride(ride: Json<Ride>) -> Json<String> {
 //     Json(format!("New ride: {}", ride.title))
 // }
-//
-// nachos
 
 #[launch]
 fn rocket() -> _ {
