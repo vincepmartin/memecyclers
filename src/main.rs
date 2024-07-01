@@ -6,7 +6,6 @@ use std::env;
 use std::vec;
 
 // Other peoples stuff...
-// TODO: All this diesel stuff was just imported beacuse the compiler was complaining.
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl, SelectableHelper};
 
 // Get env vars from dot files.
@@ -19,7 +18,6 @@ use rocket::figment::{
     value::{Map, Value},
 };
 
-// use rocket::sentinel::resolution::DefaultSentinel;
 use rocket::serde::json::Json;
 use rocket_sync_db_pools::{database, diesel};
 
@@ -27,7 +25,7 @@ use rocket_sync_db_pools::{database, diesel};
 // mod libs;
 mod models;
 mod schema;
-use models::Ride;
+use models::{InsertableRide, Ride};
 
 // Create our DB struct...
 #[database("rides_db")]
@@ -59,10 +57,15 @@ async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
 // fn get_all_ride_ids() -> Json<Vec<Ride>> {}
 
 // Create a new ride.
-// #[post("/ride", data = "<ride>")]
-// fn post_ride(ride: Json<Ride>) -> Json<String> {
-//     Json(format!("New ride: {}", ride.title))
-// }
+#[post("/ride", format = "json", data = "<ride>")]
+async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Json<String> {
+    use schema::rides::dsl::*;
+    conn.run(move |conn| diesel::insert_into(rides).values(&*ride).execute(conn))
+        .await
+        .ok();
+
+    return Json("OK".to_string());
+}
 
 #[launch]
 fn rocket() -> _ {
@@ -78,5 +81,5 @@ fn rocket() -> _ {
     let figment = rocket::Config::figment().merge(("databases", map!["rides_db" => db]));
     rocket::custom(figment)
         .attach(RidesDb::fairing())
-        .mount("/", routes![get_ride])
+        .mount("/", routes![get_ride, post_ride])
 }
