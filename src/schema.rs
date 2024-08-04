@@ -6,5 +6,6 @@ diesel::table! {
         #[max_length = 255]
         title -> Varchar,
         description -> Text,
+        created_date -> Timestamptz,
     }
 }
