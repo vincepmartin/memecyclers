@@ -64,14 +64,15 @@ async fn get_health() -> Json<String> {
 
 // Create a new ride.
 #[post("/ride", format = "json", data = "<ride>")]
-async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Option<Json<String>> {
+async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Option<Json<Ride>> {
     use schema::rides::dsl::*;
     let result = conn
-        .run(move |conn| diesel::insert_into(rides).values(&*ride).execute(conn))
+        // .run(move |conn| diesel::insert_into(rides).values(&*ride).execute(conn))
+        .run(move |conn| diesel::insert_into(rides).values(&*ride).get_result(conn))
         .await;
 
     match result {
-        Ok(_) => Some(Json("OK".to_string())),
+        Ok(ride) => Some(Json(ride)),
         Err(_) => None,
     }
 }
