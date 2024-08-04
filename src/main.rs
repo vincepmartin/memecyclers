@@ -51,6 +51,12 @@ async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
     .map(Json)
 }
 
+// Health check returns OK if everything is OK.
+#[get("/health")]
+async fn get_health() -> Json<String> {
+    return Json(String::from("OK"));
+}
+
 // TODO: Implement this.
 // Get a list of all rides in the DB.
 // #[get("/ride")]
@@ -58,13 +64,16 @@ async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
 
 // Create a new ride.
 #[post("/ride", format = "json", data = "<ride>")]
-async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Json<String> {
+async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Option<Json<String>> {
     use schema::rides::dsl::*;
-    conn.run(move |conn| diesel::insert_into(rides).values(&*ride).execute(conn))
-        .await
-        .ok();
+    let result = conn
+        .run(move |conn| diesel::insert_into(rides).values(&*ride).execute(conn))
+        .await;
 
-    return Json("OK".to_string());
+    match result {
+        Ok(_) => Some(Json("OK".to_string())),
+        Err(_) => None,
+    }
 }
 
 #[launch]
@@ -81,5 +90,5 @@ fn rocket() -> _ {
     let figment = rocket::Config::figment().merge(("databases", map!["rides_db" => db]));
     rocket::custom(figment)
         .attach(RidesDb::fairing())
-        .mount("/", routes![get_ride, post_ride])
+        .mount("/", routes![get_ride, get_health, post_ride])
 }

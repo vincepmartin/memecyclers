@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use rocket::serde::{Deserialize, Serialize};
 
 // Ride Struct
-#[derive(Queryable, Selectable, Insertable)]
+#[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::rides)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[derive(Deserialize, Serialize)]
@@ -19,6 +19,7 @@ pub struct Ride {
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::rides)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+// TODO: Do we need both Deserialize and Serialize?
 #[derive(Deserialize, Serialize)]
 #[serde(crate = "rocket::serde")]
 pub struct InsertableRide {
