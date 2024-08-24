@@ -23,13 +23,14 @@ diesel.rs to build.
 On my system, a GNU/Linux (Ubuntu) I had to install `libpq-dev` so that diesel
 could communicate with the DB. That was installed via `sudo apt install libpq-dev`.
 
-Once this is build you will also have to start up the database docker image in
+Once this is built you will also have to start up the database docker image in
 ./db with `docker-compose up`.
 
 With the DB up you will then have to run your database migration files. This
 is done via the `diesel-cli` tool.
 
 Install `diesel-cli` via
+
 `cargo install diesel_cli --no-default-features --features postgres`
 
 Then create your db and run the migrations via
