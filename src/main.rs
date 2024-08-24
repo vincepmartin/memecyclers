@@ -22,9 +22,10 @@ use rocket::serde::json::Json;
 use rocket_sync_db_pools::{database, diesel};
 
 // My modules...
-// mod libs;
 mod models;
 mod schema;
+#[cfg(test)]
+mod tests;
 use models::{InsertableRide, Ride};
 
 // Create our DB struct...
@@ -35,20 +36,35 @@ struct RidesDb(diesel::PgConnection);
 #[get("/ride/<ride_id>")]
 async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
     use schema::rides::dsl::*;
-    // The move tells the closure below to BORROW all variables that it needs.
-    // Since they borrow it, the higher level items can't destroy it until we are done with it.
+    let result = conn
+        .run(move |conn| {
+            rides
+                .filter(id.eq(ride_id))
+                .select(Ride::as_select())
+                .first(conn)
+                .optional()
+        })
+        .await;
 
-    conn.run(move |conn| {
-        rides
-            .filter(id.eq(ride_id))
-            .select(Ride::as_select())
-            .first(conn)
-            .optional()
-    })
-    .await
-    .ok()
-    .flatten()
-    .map(Json)
+    match result {
+        Ok(Some(ride)) => Some(Json(ride)),
+        _ => None,
+    }
+}
+
+// Delete a particular ride based on id.
+#[delete("/ride/<ride_id>")]
+async fn delete_ride(conn: RidesDb, ride_id: i32) -> Json<String> {
+    use schema::rides::dsl::*;
+
+    let result = conn
+        .run(move |conn| diesel::delete(rides.filter(id.eq(ride_id))).execute(conn))
+        .await;
+
+    match result {
+        Ok(ok) => Json(format!("{ok} ride(s) with id {ride_id} deleted.").to_string()),
+        Err(error) => Json(format!("Error deleting ride {}", error)),
+    }
 }
 
 // Health check returns OK if everything is OK.
@@ -67,7 +83,6 @@ async fn get_health() -> Json<String> {
 async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Option<Json<Ride>> {
     use schema::rides::dsl::*;
     let result = conn
-        // .run(move |conn| diesel::insert_into(rides).values(&*ride).execute(conn))
         .run(move |conn| diesel::insert_into(rides).values(&*ride).get_result(conn))
         .await;
 
@@ -91,5 +106,5 @@ fn rocket() -> _ {
     let figment = rocket::Config::figment().merge(("databases", map!["rides_db" => db]));
     rocket::custom(figment)
         .attach(RidesDb::fairing())
-        .mount("/", routes![get_ride, get_health, post_ride])
+        .mount("/", routes![get_ride, get_health, post_ride, delete_ride])
 }
