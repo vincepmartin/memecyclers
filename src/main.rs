@@ -62,13 +62,7 @@ async fn delete_ride(conn: RidesDb, ride_id: i32) -> Json<String> {
         .await;
 
     match result {
-        Ok(ok) => {
-            if ok >= 1 {
-                Json(format!("{ok} ride(s) with id {ride_id} deleted.").to_string())
-            } else {
-                Json(format!("No ride found with id {ride_id}").to_string())
-            }
-        }
+        Ok(ok) => Json(format!("{ok} ride(s) with id {ride_id} deleted.").to_string()),
         Err(error) => Json(format!("Error deleting ride {}", error)),
     }
 }
