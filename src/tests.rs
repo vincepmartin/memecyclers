@@ -1,12 +1,13 @@
-use super::models::{InsertableRide, Ride};
-use super::rocket;
+use crate::models::{InsertableRide, Ride};
+use crate::rocket;
+
 use rocket::http::{ContentType, Status};
 use rocket::local::blocking::Client;
 
 #[test]
 fn check_health() {
     let client = Client::tracked(rocket()).expect("valid rocket instance");
-    let response = client.get(uri!(super::get_health)).dispatch();
+    let response = client.get("/health").dispatch();
 
     assert_eq!(response.status(), Status::Ok);
     assert_eq!(response.into_string().unwrap(), "\"OK\"");
@@ -27,7 +28,7 @@ fn test_everything() {
 
     let client = Client::tracked(rocket()).expect("valid rocket instance");
     let response = client
-        .post(uri!(super::post_ride))
+        .post("/ride/")
         .header(ContentType::JSON)
         .body(rocket::serde::json::to_string(&insertable_example_ride).unwrap())
         .dispatch();
