@@ -7,7 +7,7 @@ use rocket::local::blocking::Client;
 #[test]
 fn check_health() {
     let client = Client::tracked(rocket()).expect("valid rocket instance");
-    let response = client.get("/health").dispatch();
+    let response = client.get("/api/health").dispatch();
 
     assert_eq!(response.status(), Status::Ok);
     assert_eq!(response.into_string().unwrap(), "\"OK\"");
@@ -28,7 +28,7 @@ fn test_everything() {
 
     let client = Client::tracked(rocket()).expect("valid rocket instance");
     let response = client
-        .post("/ride/")
+        .post("/api/ride/")
         .header(ContentType::JSON)
         .body(rocket::serde::json::to_string(&insertable_example_ride).unwrap())
         .dispatch();
@@ -50,7 +50,7 @@ fn test_everything() {
     // ********************
     println!("**** GETTING RIDE WITH ID {} ****", post_returned_ride.id);
     let response = client
-        .get(format!("/ride/{}", post_returned_ride.id))
+        .get(format!("/api/ride/{}", post_returned_ride.id))
         .header(ContentType::JSON)
         .dispatch();
 
@@ -70,7 +70,7 @@ fn test_everything() {
     // ********************
 
     let response = client
-        .delete(format!("/ride/{}", get_returned_ride.id))
+        .delete(format!("/api/ride/{}", get_returned_ride.id))
         .header(ContentType::JSON)
         .dispatch();
 
@@ -80,7 +80,7 @@ fn test_everything() {
     // 4. Verify DELETE ride is actually gone from the DB.
     // ********************
     let response = client
-        .get("/ride/{get_returned_ride.id}")
+        .get("/api/ride/{get_returned_ride.id}")
         .header(ContentType::JSON)
         .dispatch();
 

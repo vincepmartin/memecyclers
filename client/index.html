@@ -8,7 +8,7 @@
       <form
         @submit.prevent
         id="ride_form"
-        x-bind:hx-get="'ride/' + ride"
+        x-bind:hx-get="'api/ride/' + ride"
         hx-target="#ride_content"
         hx-params="none"
         x-init="$watch('ride', () => htmx.process($el))"

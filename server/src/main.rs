@@ -45,6 +45,9 @@ fn rocket() -> _ {
     let figment = rocket::Config::figment().merge(("databases", map!["rides_db" => db]));
     rocket::custom(figment)
         .attach(RidesDb::fairing())
-        .mount("/", FileServer::from("./client"))
-        .mount("/", routes![get_ride, get_health, post_ride, delete_ride])
+        .mount("/", FileServer::from("../client"))
+        .mount(
+            "/api/",
+            routes![get_ride, get_health, post_ride, delete_ride],
+        )
 }
