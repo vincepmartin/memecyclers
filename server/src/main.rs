@@ -2,21 +2,22 @@
 extern crate rocket;
 
 // Build in stuff...
-use std::env;
-use std::vec;
+use std::{env, vec};
 
 // Get env vars from dot files.
 use dotenvy::dotenv;
 
 // Let us use some features from rocket to "custom"
 // configure our DB connection in the launch method.
-use rocket::figment::{
-    util::map,
-    value::{Map, Value},
+use rocket::{
+    figment::{
+        util::map,
+        value::{Map, Value},
+    },
+    fs::FileServer,
 };
 
 use rocket_sync_db_pools::{database, diesel};
-
 // My modules...
 mod models;
 mod routes;
@@ -44,5 +45,9 @@ fn rocket() -> _ {
     let figment = rocket::Config::figment().merge(("databases", map!["rides_db" => db]));
     rocket::custom(figment)
         .attach(RidesDb::fairing())
-        .mount("/", routes![get_ride, get_health, post_ride, delete_ride])
+        .mount("/", FileServer::from("../client"))
+        .mount(
+            "/api/",
+            routes![get_ride, get_health, post_ride, delete_ride],
+        )
 }

@@ -1,0 +1,23 @@
+<script src="./lib/htmx.min.js"></script>
+<script src="./lib/alpine.js"></script>
+
+<html>
+  <body>
+    <h1>Meme Cycle</h1>
+    <div x-data="{ ride: 0 }">
+      <form
+        @submit.prevent
+        id="ride_form"
+        x-bind:hx-get="'api/ride/' + ride"
+        hx-target="#ride_content"
+        hx-params="none"
+        x-init="$watch('ride', () => htmx.process($el))"
+      >
+        <label>Ride number</label>
+        <input type="number" name="ride" id="ride_number" x-model="ride" />
+        <button type="submit">Get ride</button>
+      </form>
+    </div>
+    <div id="ride_content"></div>
+  </body>
+</html>
