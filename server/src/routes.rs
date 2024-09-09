@@ -1,6 +1,6 @@
 pub mod routes {
-    use crate::models::{InsertableRide, Ride};
-    use crate::rocket::serde::json::Json;
+    use crate::models::{InsertableRide, Ride, RideData};
+    use crate::rocket::{form::Form, fs::TempFile, serde::json::Json};
     use crate::schema;
     use crate::RidesDb;
     use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl, SelectableHelper};
@@ -43,7 +43,7 @@ pub mod routes {
     // Health check returns OK if everything is OK.
     #[get("/health")]
     pub async fn get_health() -> Json<String> {
-        return Json(String::from("OK"));
+        return Json("OK".to_string());
     }
 
     // TODO: Implement this.
@@ -63,5 +63,18 @@ pub mod routes {
             Ok(ride) => Some(Json(ride)),
             Err(_) => None,
         }
+    }
+
+    // Create a new ride with an attached file.
+    #[post("/ride_data", data = "<ride_data>")]
+    pub async fn post_ride_data(conn: RidesDb, ride_data: Form<RideData<'_>>) -> Json<String> {
+        println!("**** POSTING RIDE WITH DATA ****");
+        println!("{}", ride_data.title);
+        println!("{}", ride_data.description);
+
+        // TODO: Convert the form data into an InsertableRide and put it into the DB.
+
+        // TODO: Save the file somewhere, generate a pointer, and then update the db.
+        return Json("OK".to_string());
     }
 }
