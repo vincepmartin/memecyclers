@@ -1,4 +1,4 @@
-use crate::models::{InsertableRide, Ride};
+use crate::models::{InsertableRide, Ride, RideData};
 use crate::rocket;
 
 use rocket::http::{ContentType, Status};
@@ -89,4 +89,26 @@ fn test_everything() {
         Status::BadRequest,
         "Deleted item still exists."
     );
+}
+
+#[test]
+fn test_multipart_form() {
+    // ********************
+    // 1. Test our multipart form.
+    // ********************
+    let ride_data_example = RideData {
+        title: "ride_data_test".to_string(),
+        description: "ride_data_description".to_string(),
+        data: //TODO: Figure out how to get binary file here.
+    };
+
+    let client = Client::tracked(rocket()).expect("valid rocket instance");
+    let response = client
+        .post("/api/ride/")
+        .header(ContentType::Form)
+        // TODO: The next bit is obviously not correct...
+        .body(rocket::serde::json::to_string(&ride_data_example).unwrap())
+        .dispatch();
+
+    assert_eq!(response.status(), Status::Ok);
 }
