@@ -66,14 +66,13 @@ pub mod routes {
     }
 
     // Create a new ride with an attached file.
-    #[post("/ride_data", data = "<ride_data>")]
-    pub async fn post_ride_data(conn: RidesDb, ride_data: Form<RideData<'_>>) -> Json<String> {
+    #[post("/ride_data", data = "<ride_form>")]
+    pub async fn post_ride_data(conn: RidesDb, ride_form: Form<RideData<'_>>) -> Json<String> {
         println!("**** POSTING RIDE WITH DATA ****");
-        println!("{}", ride_data.title);
-        println!("{}", ride_data.description);
+        println!("{}", ride_form.title);
+        println!("{}", ride_form.description);
 
         // TODO: Convert the form data into an InsertableRide and put it into the DB.
-
         // TODO: Save the file somewhere, generate a pointer, and then update the db.
         return Json("OK".to_string());
     }
