@@ -1,10 +1,10 @@
 pub mod routes {
     use crate::models::{InsertableRide, Ride, RideData};
-    use crate::rocket::{form::Form, fs::TempFile, serde::json::Json};
+    use crate::rocket::{form::Form, serde::json::Json};
     use crate::schema;
     use crate::RidesDb;
     use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl, SelectableHelper};
-
+    use uuid::Uuid;
     // Return a particular ride based on id.
     #[get("/ride/<ride_id>")]
     pub async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
@@ -67,10 +67,47 @@ pub mod routes {
 
     // Create a new ride with an attached file.
     #[post("/ride_data", data = "<ride_form>")]
-    pub async fn post_ride_data(conn: RidesDb, ride_form: Form<RideData<'_>>) -> Json<String> {
+    pub async fn post_ride_data(conn: RidesDb, mut ride_form: Form<RideData<'_>>) -> Json<String> {
         println!("**** POSTING RIDE WITH DATA ****");
         println!("{}", ride_form.title);
         println!("{}", ride_form.description);
+
+        match &mut ride_form.data {
+            Some(d) => {
+                println!("We have a file attachment...");
+                let tmp_file_path = "storage";
+                let tmp_file_name = Uuid::new_v4();
+                let tmp_file_ext = "jpg";
+
+                match d
+                    .persist_to(format!(
+                        "{}/{}.{}",
+                        tmp_file_path,
+                        tmp_file_name.to_string(),
+                        tmp_file_ext
+                    ))
+                    .await
+                {
+                    // We can use the '_' to basically ignore this value...
+                    Ok(_) => {
+                        println!(
+                            "Saved file to {}/{}{}",
+                            tmp_file_path, tmp_file_name, tmp_file_ext
+                        );
+                    }
+                    Err(error) => {
+                        println!(
+                            "Failed to save file to {}/{}{}",
+                            tmp_file_path, tmp_file_name, tmp_file_ext
+                        );
+                        println!("{}", error.to_string());
+                    }
+                }
+            }
+            None => {
+                println!("We have no file attachment...");
+            }
+        }
 
         // TODO: Convert the form data into an InsertableRide and put it into the DB.
         // TODO: Save the file somewhere, generate a pointer, and then update the db.
