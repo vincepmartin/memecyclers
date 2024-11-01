@@ -91,13 +91,13 @@ pub mod routes {
                     // We can use the '_' to basically ignore this value...
                     Ok(_) => {
                         println!(
-                            "Saved file to {}/{}{}",
+                            "Saved file to {}/{}.{}",
                             tmp_file_path, tmp_file_name, tmp_file_ext
                         );
                     }
                     Err(error) => {
                         println!(
-                            "Failed to save file to {}/{}{}",
+                            "Failed to save file to {}/{}.{}",
                             tmp_file_path, tmp_file_name, tmp_file_ext
                         );
                         println!("{}", error.to_string());
