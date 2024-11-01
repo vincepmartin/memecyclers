@@ -78,28 +78,32 @@ pub mod routes {
                 let tmp_file_path = "storage";
                 let tmp_file_name = Uuid::new_v4();
                 let tmp_file_ext = "jpg";
-
-                match d
-                    .persist_to(format!(
+                let full_file_path_and_name = if let Some(form_file_name) = d.name() {
+                    println!("We have a file name in the submitted form!");
+                    format!(
+                        "{}/{}_{}.{}",
+                        tmp_file_path,
+                        tmp_file_name.to_string(),
+                        form_file_name,
+                        tmp_file_ext
+                    )
+                } else {
+                    println!("We do not have a file name in the submitted form!");
+                    format!(
                         "{}/{}.{}",
                         tmp_file_path,
                         tmp_file_name.to_string(),
                         tmp_file_ext
-                    ))
-                    .await
-                {
+                    )
+                };
+
+                match d.persist_to(&full_file_path_and_name).await {
                     // We can use the '_' to basically ignore this value...
                     Ok(_) => {
-                        println!(
-                            "Saved file to {}/{}.{}",
-                            tmp_file_path, tmp_file_name, tmp_file_ext
-                        );
+                        println!("Saved file to {}", full_file_path_and_name);
                     }
                     Err(error) => {
-                        println!(
-                            "Failed to save file to {}/{}.{}",
-                            tmp_file_path, tmp_file_name, tmp_file_ext
-                        );
+                        println!("Failed to save file to {}", full_file_path_and_name);
                         println!("{}", error.to_string());
                     }
                 }
