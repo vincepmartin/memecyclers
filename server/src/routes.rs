@@ -100,6 +100,20 @@ pub mod routes {
                     // We can use the '_' to basically ignore this value...
                     Ok(_) => {
                         println!("Saved file to {}", full_file_path_and_name);
+
+                        let temp_insertable_ride = InsertableRide {
+                            title: ride_form.title.clone(),
+                            description: ride_form.description.clone(),
+                        };
+
+                        // TODO: Handle this error...
+                        if let Ok(ride) = add_insertable_ride(conn, temp_insertable_ride).await {
+                            println!("OK!!!!");
+                            println!("Ride returned after inserting with attachment is: ");
+                            println!("{:?}", ride);
+                        } else {
+                            println!("ERROR!!!");
+                        }
                     }
                     Err(error) => {
                         println!("Failed to save file to {}", full_file_path_and_name);

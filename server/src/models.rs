@@ -6,6 +6,28 @@ use rocket::{
     serde::{Deserialize, Serialize},
 };
 
+/*
+ * Define items that are returned to the user.
+ */
+
+// Returned data container.  All data returned will be
+// encapsulated in this.
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub enum ApiResponse<T> {
+    #[serde(rename = "success")]
+    Success { data: T },
+    #[serde(rename = "error")]
+    Error { error: ApiError },
+}
+
+// Error
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "rocket::serde")]
+pub struct ApiError {
+    pub message: String,
+}
+
 // Ride Struct
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::rides)]
@@ -31,7 +53,9 @@ pub struct InsertableRide {
 
 // RideData Struct
 // Used to add a new ride with includes binary files.
-// Will mostly be convered to a InsertableRide for DB insertion.
+// Will mostly be converted to an InsertableRide for DB insertion.
+// Additionally we will also probably have an InsertableRideFile and RideFile
+// struct as well.
 #[derive(FromForm)]
 pub struct RideData<'d> {
     pub title: String,
