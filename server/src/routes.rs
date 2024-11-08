@@ -3,7 +3,9 @@ pub mod routes {
     use crate::rocket::{form::Form, serde::json::Json};
     use crate::schema;
     use crate::RidesDb;
-    use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl, SelectableHelper};
+    use diesel::{
+        ExpressionMethods, OptionalExtension, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
+    };
     use uuid::Uuid;
     // Return a particular ride based on id.
     #[get("/ride/<ride_id>")]
@@ -54,10 +56,7 @@ pub mod routes {
     // Create a new ride.
     #[post("/ride", format = "json", data = "<ride>")]
     pub async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Option<Json<Ride>> {
-        use schema::rides::dsl::*;
-        let result = conn
-            .run(move |conn| diesel::insert_into(rides).values(&*ride).get_result(conn))
-            .await;
+        let result = add_insertable_ride(conn, ride.into_inner()).await;
 
         match result {
             Ok(ride) => Some(Json(ride)),
@@ -109,12 +108,32 @@ pub mod routes {
                 }
             }
             None => {
-                println!("We have no file attachment...");
+                println!("Creating new ride without attachment...");
+                let temp_insertable_ride = InsertableRide {
+                    title: ride_form.title.clone(),
+                    description: ride_form.description.clone(),
+                };
+                // TODO: Handle this error...
+                add_insertable_ride(conn, temp_insertable_ride).await;
             }
         }
 
         // TODO: Convert the form data into an InsertableRide and put it into the DB.
         // TODO: Save the file somewhere, generate a pointer, and then update the db.
         return Json("OK".to_string());
+    }
+
+    // Save an insertable write to the db.
+    async fn add_insertable_ride(conn: RidesDb, ride: InsertableRide) -> QueryResult<Ride> {
+        use schema::rides::dsl::*;
+        let result = conn
+            .run(move |conn| {
+                diesel::insert_into(rides)
+                    .values(&ride)
+                    .get_result::<Ride>(conn)
+            })
+            .await;
+
+        return result;
     }
 }
