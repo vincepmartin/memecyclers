@@ -2,7 +2,7 @@
 extern crate rocket;
 
 // Build in stuff...
-use std::{env, vec};
+use std::{env, fs, path::Path, vec};
 
 // Get env vars from dot files.
 use dotenvy::dotenv;
@@ -42,7 +42,34 @@ fn rocket() -> _ {
         "timeout" => 5.into()
     };
 
+    // Establish our config figment.
     let figment = rocket::Config::figment().merge(("databases", map!["rides_db" => db]));
+
+    // Check to make sure our temp directory exists, if it does not, create it!
+    match figment.find_value("temp_dir") {
+        Ok(val) => {
+            if let Some(val_path) = val.as_str() {
+                let path = Path::new(val_path);
+                if !path.exists() {
+                    match fs::create_dir_all(path) {
+                        Ok(_) => {
+                            println!("Creating temp_dir at {}", val_path);
+                        }
+                        Err(e) => {
+                            println!("Error temp_dir path at {}", val_path);
+                            println!("{}", e);
+                        }
+                    }
+                }
+            } else {
+            }
+        }
+        Err(e) => {
+            println!("Error temp_dir value not found in config files.");
+            println!("{}", e);
+        }
+    }
+
     rocket::custom(figment)
         .attach(RidesDb::fairing())
         .mount("/", FileServer::from("../client"))

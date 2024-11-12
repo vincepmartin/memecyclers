@@ -1,2 +1,7 @@
 [default]
 temp_dir = "/tmp/memecyclers"
+log_level = "debug"
+
+[default.limits]
+file = "5MiB"      # Increase as needed, e.g., 5MB
+data-form = "5MiB" # This may also be relevant if the entire form data size needs to be increased

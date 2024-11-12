@@ -70,6 +70,7 @@ pub mod routes {
         println!("**** POSTING RIDE WITH DATA ****");
         println!("{}", ride_form.title);
         println!("{}", ride_form.description);
+        println!("Data field debug: {:?}", ride_form.data.is_some());
 
         match &mut ride_form.data {
             Some(d) => {
@@ -95,7 +96,6 @@ pub mod routes {
                         tmp_file_ext
                     )
                 };
-
                 match d.persist_to(&full_file_path_and_name).await {
                     // We can use the '_' to basically ignore this value...
                     Ok(_) => {
