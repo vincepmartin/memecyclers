@@ -8,6 +8,7 @@ pub mod routes {
         SelectableHelper,
     };
     use uuid::Uuid;
+
     // Return a particular ride based on id.
     #[get("/ride/<ride_id>")]
     pub async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
@@ -68,7 +69,7 @@ pub mod routes {
     // Create a new ride with an attached file.
     #[post("/ride_data", data = "<ride_form>")]
     pub async fn post_ride_data(conn: RidesDb, mut ride_form: Form<RideData<'_>>) -> Json<String> {
-        println!("**** POSTING RIDE WITH DATA ****");
+        println!("POST: RIDE WITH DATA");
         println!("{}", ride_form.title);
         println!("{}", ride_form.description);
         println!("Data field debug: {:?}", ride_form.data.is_some());
@@ -80,7 +81,7 @@ pub mod routes {
         };
 
         let ride_result = add_insertable_ride(&conn, temp_insertable_ride).await;
-        let ride = match ride_result {
+        let _ride = match ride_result {
             Ok(ride) => {
                 println!("Added a ride.");
                 println!("{:?}", ride);
@@ -143,8 +144,8 @@ pub mod routes {
 
             // TODO: Handle this error, here you can pass the error back via a Responder
             // https://rocket.rs/guide/v0.5/responses/#responder
-            Err(e) => {
-                println!("ERROR ADDING A RIDE!");
+            Err(_) => {
+                println!("Error adding a ride!");
                 // return Err(Json("OK"));
             }
         };
