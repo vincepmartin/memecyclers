@@ -46,16 +46,18 @@ pub struct Ride {
 }
 
 // RideFile
-#[derive(Queryable, Selectable)]
-#[diesel(table_name = crate::schema::ride_data)]
+#[derive(
+    Deserialize, Serialize, Queryable, Selectable, Identifiable, Associations, Debug, PartialEq,
+)]
+#[diesel(table_name = crate::schema::ride_files)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[diesel(belongs_to(Ride))]
 #[serde(crate = "rocket::serde")]
 pub struct RideFile {
     pub id: i32,
     pub created_date: DateTime<Utc>,
     pub description: String,
-    pub rides_id: i32,
+    pub ride_id: i32,
     pub file_name: String,
     pub file_type: String,
 }
@@ -72,13 +74,13 @@ pub struct InsertableRide {
 
 // InsertableRideFile
 #[derive(Insertable, Queryable, Selectable)]
-#[diesel(table_name = crate::schema::ride_data)]
+#[diesel(table_name = crate::schema::ride_files)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(crate = "rocket::serde")]
 pub struct InsertableRideFile {
     pub description: String,
-    pub rides_id: i32,
+    pub ride_id: i32,
     pub file_name: String,
     pub file_type: String,
 }

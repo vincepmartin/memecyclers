@@ -1,5 +1,7 @@
 pub mod routes {
-    use crate::models::{InsertableRide, InsertableRideFile, Ride, RideData};
+    use crate::models::{
+        ApiResponse, InsertableRide, InsertableRideFile, Ride, RideData, RideFile, RideWithFiles,
+    };
     use crate::rocket::{form::Form, serde::json::Json};
     use crate::schema;
     use crate::RidesDb;
@@ -11,9 +13,9 @@ pub mod routes {
 
     // Return a particular ride based on id.
     #[get("/ride/<ride_id>")]
-    pub async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
-        use crate::schema::rides::dsl::*;
-        let result = conn
+    pub async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<ApiResponse<RideWithFiles>>> {
+        use schema::rides::dsl::*;
+        let ride_query = conn
             .run(move |conn| {
                 rides
                     .filter(id.eq(ride_id))
@@ -23,10 +25,17 @@ pub mod routes {
             })
             .await;
 
-        match result {
-            Ok(Some(ride)) => Some(Json(ride)),
-            _ => None,
-        }
+        // let ride_files_query = conn.run(move |conn| {
+        //     let ride_files = ride_file:
+        // }).await;
+
+        // let ride_files_query = RideFile::belonging_to(&ride_query)
+        //     .select(RideFile::as_select())
+        //     .load(conn)?;
+        // match ride_result {
+        //     Ok(Some(ride)) => Some(Json(ride)),
+        //     _ => None,
+        // }
     }
 
     // Delete a particular ride based on id.
@@ -110,7 +119,7 @@ pub mod routes {
                                     println!("Saved file to {}", full_file_path_and_name);
                                     let insertable_ride_file = InsertableRideFile {
                                         description: "temp_description".to_string(),
-                                        rides_id: ride.id,
+                                        ride_id: ride.id,
                                         file_name: full_file_path_and_name,
                                         file_type: "ride".to_string(),
                                     };
@@ -174,10 +183,10 @@ pub mod routes {
         conn: &RidesDb,
         insertable_ride_file: InsertableRideFile,
     ) -> Result<usize, Error> {
-        use schema::ride_data::dsl::*;
+        use schema::ride_files::dsl::*;
         let result = conn
             .run(move |conn| {
-                diesel::insert_into(ride_data)
+                diesel::insert_into(ride_files)
                     .values(&insertable_ride_file)
                     .execute(conn)
             })
