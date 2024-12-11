@@ -34,7 +34,7 @@ pub mod routes {
                 let ride_files_query = conn
                     .run(move |conn| {
                         ride_files
-                            .filter(ride_id.eq(ride_id))
+                            .filter(ride_id.eq(ride.id))
                             .load::<RideFile>(conn)
                     })
                     .await;
