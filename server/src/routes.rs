@@ -2,7 +2,7 @@ pub mod routes {
     use crate::models::{
         ApiResponse, InsertableRide, InsertableRideFile, Ride, RideData, RideFile, RideWithFiles,
     };
-    use crate::rocket::{form::Form, serde::json::Json};
+    use crate::rocket::{form::Form, http::Status, serde::json::Json};
     use crate::schema;
     use crate::RidesDb;
     use diesel::{
@@ -13,29 +13,47 @@ pub mod routes {
 
     // Return a particular ride based on id.
     #[get("/ride/<ride_id>")]
-    pub async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<ApiResponse<RideWithFiles>>> {
+    pub async fn get_ride(
+        conn: RidesDb,
+        ride_id: i32,
+    ) -> Result<Json<ApiResponse<RideWithFiles>>, Status> {
         use schema::rides::dsl::*;
+        // This is a
         let ride_query = conn
             .run(move |conn| {
                 rides
                     .filter(id.eq(ride_id))
                     .select(Ride::as_select())
                     .first(conn)
-                    .optional()
             })
             .await;
 
-        // let ride_files_query = conn.run(move |conn| {
-        //     let ride_files = ride_file:
-        // }).await;
+        match ride_query {
+            Ok(ride) => {
+                use schema::ride_files::dsl::*;
+                let ride_files_query = conn
+                    .run(move |conn| {
+                        ride_files
+                            .filter(ride_id.eq(ride_id))
+                            .load::<RideFile>(conn)
+                    })
+                    .await;
 
-        // let ride_files_query = RideFile::belonging_to(&ride_query)
-        //     .select(RideFile::as_select())
-        //     .load(conn)?;
-        // match ride_result {
-        //     Ok(Some(ride)) => Some(Json(ride)),
-        //     _ => None,
-        // }
+                match ride_files_query {
+                    Ok(ride_files_result) => Ok(Json(ApiResponse {
+                        data: RideWithFiles {
+                            id: ride.id,
+                            title: ride.title,
+                            description: ride.description,
+                            created_date: ride.created_date,
+                            ride_files: ride_files_result,
+                        },
+                    })),
+                    Err(_) => Err(Status::NotFound),
+                }
+            }
+            Err(_) => Err(Status::NotFound),
+        }
     }
 
     // Delete a particular ride based on id.

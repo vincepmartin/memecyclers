@@ -13,18 +13,8 @@ use rocket::{
 // ApiResponse struct acts as template for all responses.
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
-pub enum ApiResponse<T> {
-    #[serde(rename = "success")]
-    Success { data: T },
-    #[serde(rename = "error")]
-    Error { error: ApiError },
-}
-
-// ApiError contains our error message.
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct ApiError {
-    pub message: String,
+pub struct ApiResponse<T> {
+    pub data: T,
 }
 
 /*
@@ -56,8 +46,8 @@ pub struct Ride {
 pub struct RideFile {
     pub id: i32,
     pub created_date: DateTime<Utc>,
-    pub description: String,
     pub ride_id: i32,
+    pub description: String,
     pub file_name: String,
     pub file_type: String,
 }
