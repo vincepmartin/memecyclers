@@ -1,4 +1,4 @@
-use crate::models::{InsertableRide, Ride, RideData};
+use crate::models::{ApiResponse, InsertableRide, Ride, RideData};
 use crate::rocket;
 
 use rocket::http::{ContentType, Status};
@@ -17,11 +17,11 @@ fn check_health() {
 // TODO: Come back and make this better.
 #[test]
 fn test_everything() {
-    // ********************
-    // 1. Add a test ride.
-    // ********************
+    /********************
+    1. Add a test ride to the database.
+    ********************/
 
-    let insertable_example_ride = InsertableRide {
+    let input_ride = InsertableRide {
         title: "test_ride_title".to_string(),
         description: "test_ride_description.".to_string(),
     };
@@ -30,38 +30,47 @@ fn test_everything() {
     let response = client
         .post("/api/ride/")
         .header(ContentType::JSON)
-        .body(rocket::serde::json::to_string(&insertable_example_ride).unwrap())
+        .body(rocket::serde::json::to_string(&input_ride).unwrap())
         .dispatch();
 
     assert_eq!(response.status(), Status::Ok);
 
-    let post_returned_ride_string = response.into_string().unwrap();
-    let post_returned_ride: Ride = rocket::serde::json::from_str(&post_returned_ride_string)
-        .expect("Failed to deserialise response into a Ride object.");
+    let response_for_input_ride_string = response.into_string().unwrap();
+    println!("{}", response_for_input_ride_string);
 
-    assert_eq!(insertable_example_ride.title, post_returned_ride.title);
+    // TODO: Make this use the proper Struct.
+    let response_from_input_ride: ApiResponse<Ride> =
+        rocket::serde::json::from_str(&response_for_input_ride_string)
+            .expect("Failed to deserialise response into a Ride object.");
+
+    assert_eq!(input_ride.title, response_from_input_ride.data.title);
     assert_eq!(
-        insertable_example_ride.description,
-        post_returned_ride.description
+        input_ride.description,
+        response_from_input_ride.data.description
     );
 
-    // ********************
-    // 2. GET the added ride
-    // ********************
-    println!("**** GETTING RIDE WITH ID {} ****", post_returned_ride.id);
+    /********************
+    2. GET the added ride
+    ********************/
+    println!(
+        "**** GETTING RIDE WITH ID {} ****",
+        response_from_input_ride.data.id
+    );
     let response = client
-        .get(format!("/api/ride/{}", post_returned_ride.id))
+        .get(format!("/api/ride/{}", response_from_input_ride.data.id))
         .header(ContentType::JSON)
         .dispatch();
 
     let get_returned_ride_string = response.into_string().unwrap();
-    println!("{}", get_returned_ride_string);
 
-    let get_returned_ride: Ride = rocket::serde::json::from_str(&get_returned_ride_string)
-        .expect("Failed to deserialize response into a Ride struct.");
+    println!("*** Returned ride string... {}", get_returned_ride_string);
+
+    let get_returned_ride: ApiResponse<Ride> =
+        rocket::serde::json::from_str(&get_returned_ride_string)
+            .expect("Failed to deserialize response into a Ride struct.");
 
     assert_eq!(
-        get_returned_ride, post_returned_ride,
+        get_returned_ride.data, response_from_input_ride.data,
         "POST Ride and GET Ride are not equal!"
     );
 
@@ -70,7 +79,7 @@ fn test_everything() {
     // ********************
 
     let response = client
-        .delete(format!("/api/ride/{}", get_returned_ride.id))
+        .delete(format!("/api/ride/{}", get_returned_ride.data.id))
         .header(ContentType::JSON)
         .dispatch();
 
@@ -91,24 +100,24 @@ fn test_everything() {
     );
 }
 
-#[test]
-fn test_multipart_form() {
-    // ********************
-    // 1. Test our multipart form.
-    // ********************
-    let ride_data_example = RideData {
-        title: "ride_data_test".to_string(),
-        description: "ride_data_description".to_string(),
-        data: //TODO: Figure out how to get binary file here.
-    };
-
-    let client = Client::tracked(rocket()).expect("valid rocket instance");
-    let response = client
-        .post("/api/ride/")
-        .header(ContentType::Form)
-        // TODO: The next bit is obviously not correct...
-        .body(rocket::serde::json::to_string(&ride_data_example).unwrap())
-        .dispatch();
-
-    assert_eq!(response.status(), Status::Ok);
-}
+// #[test]
+// fn test_multipart_form() {
+//     // ********************
+//     // 1. Test our multipart form.
+//     // ********************
+//     let ride_data_example = RideData {
+//         title: "ride_data_test".to_string(),
+//         description: "ride_data_description".to_string(),
+//         data: //TODO: Figure out how to get binary file here.
+//     };
+//
+//     let client = Client::tracked(rocket()).expect("valid rocket instance");
+//     let response = client
+//         .post("/api/ride/")
+//         .header(ContentType::Form)
+//         // TODO: The next bit is obviously not correct...
+//         .body(rocket::serde::json::to_string(&ride_data_example).unwrap())
+//         .dispatch();
+//
+//     assert_eq!(response.status(), Status::Ok);
+// }
