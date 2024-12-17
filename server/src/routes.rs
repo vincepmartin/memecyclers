@@ -6,8 +6,7 @@ pub mod routes {
     use crate::schema;
     use crate::RidesDb;
     use diesel::{
-        result::Error, ExpressionMethods, OptionalExtension, QueryDsl, QueryResult, RunQueryDsl,
-        SelectableHelper,
+        result::Error, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
     };
     use uuid::Uuid;
 
@@ -18,7 +17,8 @@ pub mod routes {
         ride_id: i32,
     ) -> Result<Json<ApiResponse<RideWithFiles>>, Status> {
         use schema::rides::dsl::*;
-        // This is a
+
+        // Our first query gets the ride itself from the DB.
         let ride_query = conn
             .run(move |conn| {
                 rides
@@ -30,6 +30,8 @@ pub mod routes {
 
         match ride_query {
             Ok(ride) => {
+                // Our second query returns the ride_files that are associated with the item
+                // returned in the first query.
                 use schema::ride_files::dsl::*;
                 let ride_files_query = conn
                     .run(move |conn| {
@@ -58,7 +60,10 @@ pub mod routes {
 
     // Delete a particular ride based on id.
     #[delete("/ride/<ride_id>")]
-    pub async fn delete_ride(conn: RidesDb, ride_id: i32) -> Json<String> {
+    pub async fn delete_ride(
+        conn: RidesDb,
+        ride_id: i32,
+    ) -> Result<Json<ApiResponse<String>>, Status> {
         use schema::rides::dsl::*;
 
         let result = conn
@@ -66,8 +71,10 @@ pub mod routes {
             .await;
 
         match result {
-            Ok(ok) => Json(format!("{ok} ride(s) with id {ride_id} deleted.").to_string()),
-            Err(error) => Json(format!("Error deleting ride {}", error)),
+            Ok(ok) => Ok(Json(ApiResponse {
+                data: format!("{ok} ride(s) with id {ride_id} deleted.").to_string(),
+            })),
+            Err(_) => Err(Status::ServiceUnavailable),
         }
     }
 
@@ -84,18 +91,24 @@ pub mod routes {
 
     // Create a new ride.
     #[post("/ride", format = "json", data = "<ride>")]
-    pub async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Option<Json<Ride>> {
+    pub async fn post_ride(
+        conn: RidesDb,
+        ride: Json<InsertableRide>,
+    ) -> Result<Json<ApiResponse<Ride>>, Status> {
         let result = add_insertable_ride(&conn, ride.into_inner()).await;
 
         match result {
-            Ok(ride) => Some(Json(ride)),
-            Err(_) => None,
+            Ok(ride) => Ok(Json(ApiResponse { data: ride })),
+            Err(_) => Err(Status::ServiceUnavailable),
         }
     }
 
     // Create a new ride with an attached file.
     #[post("/ride_data", data = "<ride_form>")]
-    pub async fn post_ride_data(conn: RidesDb, mut ride_form: Form<RideData<'_>>) -> Json<String> {
+    pub async fn post_ride_data(
+        conn: RidesDb,
+        mut ride_form: Form<RideData<'_>>,
+    ) -> Result<Status, Status> {
         println!("POST: RIDE WITH DATA");
         println!("{}", ride_form.title);
         println!("{}", ride_form.description);
@@ -131,8 +144,9 @@ pub mod routes {
                                 format!("{}/{}.{}", tmp_file_path, tmp_file_name, tmp_file_ext)
                             };
 
-                            match file.persist_to(&full_file_path_and_name).await {
-                                // We can use the '_' to basically ignore this value...
+                            // We can use the '_' to basically ignore this value...  As we don't
+                            // handle anything from this persist_to function.
+                            let _ = match file.persist_to(&full_file_path_and_name).await {
                                 Ok(_) => {
                                     println!("Saved file to {}", full_file_path_and_name);
                                     let insertable_ride_file = InsertableRideFile {
@@ -149,16 +163,19 @@ pub mod routes {
                                     match result {
                                         Ok(count) => {
                                             println!("{} InsertableRideFile Inserted", count);
+                                            Ok(Json(Status::Ok))
                                         }
                                         Err(e) => {
                                             println!("Error Inserting InsertableRideFile!");
                                             println!("{}", e);
+                                            Err(Status::InternalServerError)
                                         }
                                     }
                                 }
-                                Err(error) => {
+                                Err(e) => {
                                     println!("Failed to save file to {}", full_file_path_and_name);
-                                    println!("{}", error.to_string());
+                                    println!("{}", e.to_string());
+                                    return Err(Status::InternalServerError);
                                 }
                             };
                         }
@@ -173,13 +190,11 @@ pub mod routes {
             // https://rocket.rs/guide/v0.5/responses/#responder
             Err(_) => {
                 println!("Error adding a ride!");
-                // return Err(Json("OK"));
             }
         };
 
-        // TODO: Convert the form data into an InsertableRide and put it into the DB.
-        // TODO: Save the file somewhere, generate a pointer, and then update the db.
-        return Json("OK".to_string());
+        // Ride added?
+        Ok(Status::Ok)
     }
 
     // Save an InsertableRide to the DB.
