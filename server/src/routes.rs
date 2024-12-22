@@ -40,7 +40,6 @@ pub mod routes {
                             .load::<RideFile>(conn)
                     })
                     .await;
-
                 match ride_files_query {
                     Ok(ride_files_result) => Ok(Json(ApiResponse {
                         data: RideWithFiles {

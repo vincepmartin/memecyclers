@@ -17,41 +17,46 @@ fn check_health() {
 // TODO: Come back and make this better.
 #[test]
 fn test_everything() {
-    /********************
-    1. Add a test ride to the database.
-    ********************/
+    // 1. Add a test ride to the database.
+    let (client, response_from_input_ride) = add_ride();
 
-    let input_ride = InsertableRide {
-        title: "test_ride_title".to_string(),
-        description: "test_ride_description.".to_string(),
-    };
+    // 2. GET the added ride
+    let get_returned_ride = get_added_ride(response_from_input_ride, &client);
 
-    let client = Client::tracked(rocket()).expect("valid rocket instance");
+    // 3. DELETE the added ride
+    delete_ride(&client, get_returned_ride);
+
+    // 4. Verify DELETE ride is actually gone from the DB.
+    verify_deleted_ride(client);
+}
+
+// Helper functions used in testing.
+fn verify_deleted_ride(client: Client) {
     let response = client
-        .post("/api/ride/")
+        .get("/api/ride/{get_returned_ride.id}")
         .header(ContentType::JSON)
-        .body(rocket::serde::json::to_string(&input_ride).unwrap())
         .dispatch();
 
-    assert_eq!(response.status(), Status::Ok);
-
-    let response_for_input_ride_string = response.into_string().unwrap();
-    println!("{}", response_for_input_ride_string);
-
-    // TODO: Make this use the proper Struct.
-    let response_from_input_ride: ApiResponse<Ride> =
-        rocket::serde::json::from_str(&response_for_input_ride_string)
-            .expect("Failed to deserialise response into a Ride object.");
-
-    assert_eq!(input_ride.title, response_from_input_ride.data.title);
     assert_eq!(
-        input_ride.description,
-        response_from_input_ride.data.description
+        response.status(),
+        Status::BadRequest,
+        "Deleted item still exists."
     );
+}
 
-    /********************
-    2. GET the added ride
-    ********************/
+fn delete_ride(client: &Client, get_returned_ride: ApiResponse<Ride>) {
+    let response = client
+        .delete(format!("/api/ride/{}", get_returned_ride.data.id))
+        .header(ContentType::JSON)
+        .dispatch();
+
+    assert_eq!(response.status(), Status::Ok, "Delete failed.");
+}
+
+fn get_added_ride(
+    response_from_input_ride: ApiResponse<Ride>,
+    client: &Client,
+) -> ApiResponse<Ride> {
     println!(
         "**** GETTING RIDE WITH ID {} ****",
         response_from_input_ride.data.id
@@ -73,31 +78,37 @@ fn test_everything() {
         get_returned_ride.data, response_from_input_ride.data,
         "POST Ride and GET Ride are not equal!"
     );
+    get_returned_ride
+}
 
-    // ********************
-    // 3. DELETE the added ride
-    // ********************
+fn add_ride() -> (Client, ApiResponse<Ride>) {
+    let input_ride = InsertableRide {
+        title: "test_ride_title".to_string(),
+        description: "test_ride_description.".to_string(),
+    };
 
+    let client = Client::tracked(rocket()).expect("valid rocket instance");
     let response = client
-        .delete(format!("/api/ride/{}", get_returned_ride.data.id))
+        .post("/api/ride/")
         .header(ContentType::JSON)
+        .body(rocket::serde::json::to_string(&input_ride).unwrap())
         .dispatch();
 
-    assert_eq!(response.status(), Status::Ok, "Delete failed.");
+    assert_eq!(response.status(), Status::Ok);
 
-    // ********************
-    // 4. Verify DELETE ride is actually gone from the DB.
-    // ********************
-    let response = client
-        .get("/api/ride/{get_returned_ride.id}")
-        .header(ContentType::JSON)
-        .dispatch();
+    let response_for_input_ride_string = response.into_string().unwrap();
+    println!("{}", response_for_input_ride_string);
 
+    let response_from_input_ride: ApiResponse<Ride> =
+        rocket::serde::json::from_str(&response_for_input_ride_string)
+            .expect("Failed to deserialise response into a Ride object.");
+
+    assert_eq!(input_ride.title, response_from_input_ride.data.title);
     assert_eq!(
-        response.status(),
-        Status::BadRequest,
-        "Deleted item still exists."
+        input_ride.description,
+        response_from_input_ride.data.description
     );
+    (client, response_from_input_ride)
 }
 
 // #[test]
