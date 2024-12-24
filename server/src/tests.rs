@@ -37,30 +37,16 @@ fn test_multipart_without_files() {
     let mut form_data: Vec<u8> = Vec::new();
     let boundary = "GADGET";
 
-    // start
-    write!(form_data, "--{}\r\n", boundary).unwrap();
+    // Add our fields.
+    add_form_field("title", "Test ride without data", boundary, &mut form_data);
+    add_form_field(
+        "description",
+        "This is the description of the test ride without data attached.  We have no files!",
+        boundary,
+        &mut form_data,
+    );
 
-    // Title
-    write!(
-        form_data,
-        "Content-Disposition: form-data; name=\"title\"\r\n"
-    )
-    .unwrap();
-    write!(form_data, "\r\n").unwrap();
-    write!(form_data, "Test form no data").unwrap();
-    write!(form_data, "\r\n").unwrap();
-
-    // Description
-    write!(form_data, "--{}\r\n", boundary).unwrap();
-    write!(
-        form_data,
-        "Content-Disposition: form-data; name=\"description\"\r\n"
-    )
-    .unwrap();
-    write!(form_data, "\r\n").unwrap();
-    write!(form_data, "Description test information.").unwrap();
-    write!(form_data, "\r\n").unwrap();
-
+    // End of our form.
     write!(form_data, "--{}--\r\n", boundary).unwrap();
 
     let client = Client::tracked(rocket()).expect("valid rocket instance");
@@ -71,6 +57,24 @@ fn test_multipart_without_files() {
 
     let response = request.dispatch();
     assert_eq!(response.status(), Status::Ok);
+}
+
+// TODO: Consider creating a Struct for this and implement some fields to create values?
+// Maybe you can store the name and values in a Vec.
+fn add_form_field(name: &str, value: &str, boundary: &str, form_data: &mut Vec<u8>) {
+    // Create our boundary
+    write!(form_data, "--{}\r\n", boundary).unwrap();
+    // Name
+    write!(
+        form_data,
+        "Content-Disposition: form-data; name=\"{}\"\r\n",
+        name
+    )
+    .unwrap();
+    write!(form_data, "\r\n").unwrap();
+    // Value
+    write!(form_data, "{}", value).unwrap();
+    write!(form_data, "\r\n").unwrap();
 }
 
 // #[test]
