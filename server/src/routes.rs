@@ -85,8 +85,21 @@ pub mod routes {
 
     // TODO: Implement this.
     // Get a list of all rides in the DB.
-    // #[get("/ride")]
-    // fn get_all_ride_ids() -> Json<Vec<Ride>> {}
+    #[get("/rides")]
+    pub async fn get_all_rides(conn: RidesDb) -> Result<Json<ApiResponse<Vec<Ride>>>, Status> {
+        // Get a list of all of our rides from the DB.
+        use schema::rides::dsl::*;
+
+        // Our first query gets the ride itself from the DB.
+        let ride_query = conn
+            .run(move |conn| rides.select(Ride::as_select()).load(conn))
+            .await;
+
+        match ride_query {
+            Ok(all_rides) => Ok(Json(ApiResponse { data: all_rides })),
+            Err(_) => Err(Status::InternalServerError),
+        }
+    }
 
     // Create a new ride.
     #[post("/ride", format = "json", data = "<ride>")]
