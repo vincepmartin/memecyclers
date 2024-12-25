@@ -7,28 +7,22 @@ use rocket::{
 };
 
 /*
- * Define items that are returned to the user.
+ * These two Structs are meant to wrap every response.
  */
 
-// Returned data container.  All data returned will be
-// encapsulated in this.
+// ApiResponse struct acts as template for all responses.
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
-pub enum ApiResponse<T> {
-    #[serde(rename = "success")]
-    Success { data: T },
-    #[serde(rename = "error")]
-    Error { error: ApiError },
+pub struct ApiResponse<T> {
+    pub data: T,
 }
 
-// Error
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct ApiError {
-    pub message: String,
-}
+/*
+ * These structs model our applications data items
+ * for use in conversting w/ the database.
+ */
 
-// Ride Struct
+// Ride Struct maps to DB.
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::rides)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -42,29 +36,18 @@ pub struct Ride {
 }
 
 // RideFile
-#[derive(Queryable, Selectable)]
-#[diesel(table_name = crate::schema::ride_data)]
+#[derive(
+    Deserialize, Serialize, Queryable, Selectable, Identifiable, Associations, Debug, PartialEq,
+)]
+#[diesel(table_name = crate::schema::ride_files)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[diesel(belongs_to(Ride))]
 #[serde(crate = "rocket::serde")]
 pub struct RideFile {
     pub id: i32,
     pub created_date: DateTime<Utc>,
+    pub ride_id: i32,
     pub description: String,
-    pub rides_id: i32,
-    pub file_name: String,
-    pub file_type: String,
-}
-
-// InsertableRideFile
-#[derive(Insertable, Queryable, Selectable)]
-#[diesel(table_name = crate::schema::ride_data)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
-#[serde(crate = "rocket::serde")]
-pub struct InsertableRideFile {
-    pub description: String,
-    pub rides_id: i32,
     pub file_name: String,
     pub file_type: String,
 }
@@ -79,11 +62,31 @@ pub struct InsertableRide {
     pub description: String,
 }
 
-// RideData Struct
-// Used to add a new ride with includes binary files.
-// Will mostly be converted to an InsertableRide for DB insertion.
-// Additionally we will also probably have an InsertableRideFile and RideFile
-// struct as well.
+// InsertableRideFile
+#[derive(Insertable, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::ride_files)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[serde(crate = "rocket::serde")]
+pub struct InsertableRideFile {
+    pub description: String,
+    pub ride_id: i32,
+    pub file_name: String,
+    pub file_type: String,
+}
+
+// RideWithFiles combines Ride and a Vec of RideFile structs.
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[serde(crate = "rocket::serde")]
+pub struct RideWithFiles {
+    pub id: i32,
+    pub title: String,
+    pub description: String,
+    pub created_date: DateTime<Utc>,
+    pub ride_files: Vec<RideFile>,
+}
+
+// RideWithFiles used for submitting form with files.
 #[derive(FromForm)]
 pub struct RideData<'d> {
     pub title: String,

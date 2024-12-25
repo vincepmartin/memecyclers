@@ -1,10 +1,10 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    ride_data (id) {
+    ride_files (id) {
         id -> Int4,
         created_date -> Timestamptz,
-        rides_id -> Int4,
+        ride_id -> Int4,
         description -> Text,
         #[max_length = 255]
         file_name -> Varchar,
@@ -23,9 +23,9 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(ride_data -> rides (rides_id));
+diesel::joinable!(ride_files -> rides (ride_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    ride_data,
+    ride_files,
     rides,
 );

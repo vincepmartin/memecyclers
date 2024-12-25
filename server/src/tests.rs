@@ -1,5 +1,7 @@
-use crate::models::{InsertableRide, Ride, RideData};
+use crate::models::{ApiResponse, InsertableRide, Ride};
 use crate::rocket;
+use std::fs;
+use std::io::Write;
 
 use rocket::http::{ContentType, Status};
 use rocket::local::blocking::Client;
@@ -17,11 +19,81 @@ fn check_health() {
 // TODO: Come back and make this better.
 #[test]
 fn test_everything() {
-    // ********************
-    // 1. Add a test ride.
-    // ********************
+    // 1. Add a test ride to the database.
+    let (client, response_from_input_ride) = add_ride();
 
-    let insertable_example_ride = InsertableRide {
+    // 2. GET the added ride
+    let get_returned_ride = get_added_ride(response_from_input_ride, &client);
+
+    // 3. DELETE the added ride
+    delete_ride(&client, get_returned_ride);
+
+    // 4. Verify DELETE ride is actually gone from the DB.
+    verify_deleted_ride(client);
+}
+
+#[test]
+fn test_multipart_without_files() {
+    let mut form_data: Vec<u8> = Vec::new();
+    let boundary = "GADGET";
+
+    // Add our fields.
+    add_form_field("title", "Test ride without data", boundary, &mut form_data);
+    add_form_field(
+        "description",
+        "This is the description of the test ride without data attached.  We have no files!",
+        boundary,
+        &mut form_data,
+    );
+
+    // End of our form.
+    write!(form_data, "--{}--\r\n", boundary).unwrap();
+
+    let client = Client::tracked(rocket()).expect("valid rocket instance");
+    let request = client
+        .post("/api/ride_data/")
+        .header(ContentType::new("multipart", "form-data; boundary=GADGET"))
+        .body(&form_data);
+
+    let response = request.dispatch();
+    assert_eq!(response.status(), Status::Ok);
+}
+
+#[test]
+fn test_multipart_form_with_files() {
+    let mut form_data: Vec<u8> = Vec::new();
+    let boundary = "GADGET";
+
+    // Add our fields.
+    add_form_field("title", "Test ride without data", boundary, &mut form_data);
+    add_form_field(
+        "description",
+        "This is the description of the test ride without data attached.  We have no files!",
+        boundary,
+        &mut form_data,
+    );
+
+    let test_file_path = "./storage/test_file.jpg";
+    let image_data = fs::read(test_file_path).expect("Failed to load test file.");
+
+    add_form_field_binary("image_1", &image_data, boundary, &mut form_data);
+
+    // End of our form.
+    write!(form_data, "--{}--\r\n", boundary).unwrap();
+
+    let client = Client::tracked(rocket()).expect("valid rocket instance");
+    let request = client
+        .post("/api/ride_data/")
+        .header(ContentType::new("multipart", "form-data; boundary=GADGET"))
+        .body(&form_data);
+
+    let response = request.dispatch();
+    assert_eq!(response.status(), Status::Ok);
+}
+
+// *** Helper functions used in testing. ***
+fn add_ride() -> (Client, ApiResponse<Ride>) {
+    let input_ride = InsertableRide {
         title: "test_ride_title".to_string(),
         description: "test_ride_description.".to_string(),
     };
@@ -30,55 +102,64 @@ fn test_everything() {
     let response = client
         .post("/api/ride/")
         .header(ContentType::JSON)
-        .body(rocket::serde::json::to_string(&insertable_example_ride).unwrap())
+        .body(rocket::serde::json::to_string(&input_ride).unwrap())
         .dispatch();
 
     assert_eq!(response.status(), Status::Ok);
 
-    let post_returned_ride_string = response.into_string().unwrap();
-    let post_returned_ride: Ride = rocket::serde::json::from_str(&post_returned_ride_string)
-        .expect("Failed to deserialise response into a Ride object.");
+    let response_for_input_ride_string = response.into_string().unwrap();
+    println!("{}", response_for_input_ride_string);
 
-    assert_eq!(insertable_example_ride.title, post_returned_ride.title);
+    let response_from_input_ride: ApiResponse<Ride> =
+        rocket::serde::json::from_str(&response_for_input_ride_string)
+            .expect("Failed to deserialise response into a Ride object.");
+
+    assert_eq!(input_ride.title, response_from_input_ride.data.title);
     assert_eq!(
-        insertable_example_ride.description,
-        post_returned_ride.description
+        input_ride.description,
+        response_from_input_ride.data.description
     );
+    (client, response_from_input_ride)
+}
 
-    // ********************
-    // 2. GET the added ride
-    // ********************
-    println!("**** GETTING RIDE WITH ID {} ****", post_returned_ride.id);
+fn get_added_ride(
+    response_from_input_ride: ApiResponse<Ride>,
+    client: &Client,
+) -> ApiResponse<Ride> {
+    println!(
+        "**** GETTING RIDE WITH ID {} ****",
+        response_from_input_ride.data.id
+    );
     let response = client
-        .get(format!("/api/ride/{}", post_returned_ride.id))
+        .get(format!("/api/ride/{}", response_from_input_ride.data.id))
         .header(ContentType::JSON)
         .dispatch();
 
     let get_returned_ride_string = response.into_string().unwrap();
-    println!("{}", get_returned_ride_string);
 
-    let get_returned_ride: Ride = rocket::serde::json::from_str(&get_returned_ride_string)
-        .expect("Failed to deserialize response into a Ride struct.");
+    println!("*** Returned ride string... {}", get_returned_ride_string);
+
+    let get_returned_ride: ApiResponse<Ride> =
+        rocket::serde::json::from_str(&get_returned_ride_string)
+            .expect("Failed to deserialize response into a Ride struct.");
 
     assert_eq!(
-        get_returned_ride, post_returned_ride,
+        get_returned_ride.data, response_from_input_ride.data,
         "POST Ride and GET Ride are not equal!"
     );
+    get_returned_ride
+}
 
-    // ********************
-    // 3. DELETE the added ride
-    // ********************
-
+fn delete_ride(client: &Client, get_returned_ride: ApiResponse<Ride>) {
     let response = client
-        .delete(format!("/api/ride/{}", get_returned_ride.id))
+        .delete(format!("/api/ride/{}", get_returned_ride.data.id))
         .header(ContentType::JSON)
         .dispatch();
 
     assert_eq!(response.status(), Status::Ok, "Delete failed.");
+}
 
-    // ********************
-    // 4. Verify DELETE ride is actually gone from the DB.
-    // ********************
+fn verify_deleted_ride(client: Client) {
     let response = client
         .get("/api/ride/{get_returned_ride.id}")
         .header(ContentType::JSON)
@@ -91,24 +172,37 @@ fn test_everything() {
     );
 }
 
-#[test]
-fn test_multipart_form() {
-    // ********************
-    // 1. Test our multipart form.
-    // ********************
-    let ride_data_example = RideData {
-        title: "ride_data_test".to_string(),
-        description: "ride_data_description".to_string(),
-        data: //TODO: Figure out how to get binary file here.
-    };
+// TODO: Consider creating a Struct for this and implement some fields to create values?
+// Maybe you can store the name and values in a Vec.
+fn add_form_field(name: &str, value: &str, boundary: &str, form_data: &mut Vec<u8>) {
+    // Create our boundary
+    write!(form_data, "--{}\r\n", boundary).unwrap();
+    // Name
+    write!(
+        form_data,
+        "Content-Disposition: form-data; name=\"{}\"\r\n",
+        name
+    )
+    .unwrap();
+    write!(form_data, "\r\n").unwrap();
+    // Value
+    write!(form_data, "{}", value).unwrap();
+    write!(form_data, "\r\n").unwrap();
+}
 
-    let client = Client::tracked(rocket()).expect("valid rocket instance");
-    let response = client
-        .post("/api/ride/")
-        .header(ContentType::Form)
-        // TODO: The next bit is obviously not correct...
-        .body(rocket::serde::json::to_string(&ride_data_example).unwrap())
-        .dispatch();
-
-    assert_eq!(response.status(), Status::Ok);
+fn add_form_field_binary(name: &str, value: &Vec<u8>, boundary: &str, form_data: &mut Vec<u8>) {
+    // Create our boundary
+    write!(form_data, "--{}\r\n", boundary).unwrap();
+    // Name
+    write!(
+        form_data,
+        "Content-Disposition: form-data; name=\"{}\"\r\n",
+        name
+    )
+    .unwrap();
+    write!(form_data, "Content-Type: image/jpeg\r\n").unwrap();
+    write!(form_data, "\r\n").unwrap();
+    // Value
+    write!(form_data, "{}", String::from_utf8_lossy(&value)).unwrap();
+    write!(form_data, "\r\n").unwrap();
 }

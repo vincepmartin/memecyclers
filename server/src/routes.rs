@@ -1,36 +1,68 @@
 pub mod routes {
-    use crate::models::{InsertableRide, InsertableRideFile, Ride, RideData};
-    use crate::rocket::{form::Form, serde::json::Json};
+    use crate::models::{
+        ApiResponse, InsertableRide, InsertableRideFile, Ride, RideData, RideFile, RideWithFiles,
+    };
+    use crate::rocket::{form::Form, http::Status, serde::json::Json};
     use crate::schema;
     use crate::RidesDb;
     use diesel::{
-        result::Error, ExpressionMethods, OptionalExtension, QueryDsl, QueryResult, RunQueryDsl,
-        SelectableHelper,
+        result::Error, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
     };
     use uuid::Uuid;
+
     // Return a particular ride based on id.
     #[get("/ride/<ride_id>")]
-    pub async fn get_ride(conn: RidesDb, ride_id: i32) -> Option<Json<Ride>> {
-        use crate::schema::rides::dsl::*;
-        let result = conn
+    pub async fn get_ride(
+        conn: RidesDb,
+        ride_id: i32,
+    ) -> Result<Json<ApiResponse<RideWithFiles>>, Status> {
+        use schema::rides::dsl::*;
+
+        // Our first query gets the ride itself from the DB.
+        let ride_query = conn
             .run(move |conn| {
                 rides
                     .filter(id.eq(ride_id))
                     .select(Ride::as_select())
                     .first(conn)
-                    .optional()
             })
             .await;
 
-        match result {
-            Ok(Some(ride)) => Some(Json(ride)),
-            _ => None,
+        match ride_query {
+            Ok(ride) => {
+                // Our second query returns the ride_files that are associated with the item
+                // returned in the first query.
+                use schema::ride_files::dsl::*;
+                let ride_files_query = conn
+                    .run(move |conn| {
+                        ride_files
+                            .filter(ride_id.eq(ride.id))
+                            .load::<RideFile>(conn)
+                    })
+                    .await;
+                match ride_files_query {
+                    Ok(ride_files_result) => Ok(Json(ApiResponse {
+                        data: RideWithFiles {
+                            id: ride.id,
+                            title: ride.title,
+                            description: ride.description,
+                            created_date: ride.created_date,
+                            ride_files: ride_files_result,
+                        },
+                    })),
+                    Err(_) => Err(Status::NotFound),
+                }
+            }
+            Err(_) => Err(Status::NotFound),
         }
     }
 
     // Delete a particular ride based on id.
     #[delete("/ride/<ride_id>")]
-    pub async fn delete_ride(conn: RidesDb, ride_id: i32) -> Json<String> {
+    pub async fn delete_ride(
+        conn: RidesDb,
+        ride_id: i32,
+    ) -> Result<Json<ApiResponse<String>>, Status> {
         use schema::rides::dsl::*;
 
         let result = conn
@@ -38,8 +70,10 @@ pub mod routes {
             .await;
 
         match result {
-            Ok(ok) => Json(format!("{ok} ride(s) with id {ride_id} deleted.").to_string()),
-            Err(error) => Json(format!("Error deleting ride {}", error)),
+            Ok(ok) => Ok(Json(ApiResponse {
+                data: format!("{ok} ride(s) with id {ride_id} deleted.").to_string(),
+            })),
+            Err(_) => Err(Status::ServiceUnavailable),
         }
     }
 
@@ -56,19 +90,25 @@ pub mod routes {
 
     // Create a new ride.
     #[post("/ride", format = "json", data = "<ride>")]
-    pub async fn post_ride(conn: RidesDb, ride: Json<InsertableRide>) -> Option<Json<Ride>> {
+    pub async fn post_ride(
+        conn: RidesDb,
+        ride: Json<InsertableRide>,
+    ) -> Result<Json<ApiResponse<Ride>>, Status> {
         let result = add_insertable_ride(&conn, ride.into_inner()).await;
 
         match result {
-            Ok(ride) => Some(Json(ride)),
-            Err(_) => None,
+            Ok(ride) => Ok(Json(ApiResponse { data: ride })),
+            Err(_) => Err(Status::ServiceUnavailable),
         }
     }
 
     // Create a new ride with an attached file.
     #[post("/ride_data", data = "<ride_form>")]
-    pub async fn post_ride_data(conn: RidesDb, mut ride_form: Form<RideData<'_>>) -> Json<String> {
-        println!("**** POSTING RIDE WITH DATA ****");
+    pub async fn post_ride_data(
+        conn: RidesDb,
+        mut ride_form: Form<RideData<'_>>,
+    ) -> Result<Status, Status> {
+        println!("POST: RIDE WITH DATA");
         println!("{}", ride_form.title);
         println!("{}", ride_form.description);
         println!("Data field debug: {:?}", ride_form.data.is_some());
@@ -80,7 +120,7 @@ pub mod routes {
         };
 
         let ride_result = add_insertable_ride(&conn, temp_insertable_ride).await;
-        let ride = match ride_result {
+        let _ride = match ride_result {
             Ok(ride) => {
                 println!("Added a ride.");
                 println!("{:?}", ride);
@@ -103,13 +143,14 @@ pub mod routes {
                                 format!("{}/{}.{}", tmp_file_path, tmp_file_name, tmp_file_ext)
                             };
 
-                            match file.persist_to(&full_file_path_and_name).await {
-                                // We can use the '_' to basically ignore this value...
+                            // We can use the '_' to basically ignore this value...  As we don't
+                            // handle anything from this persist_to function.
+                            let _ = match file.persist_to(&full_file_path_and_name).await {
                                 Ok(_) => {
                                     println!("Saved file to {}", full_file_path_and_name);
                                     let insertable_ride_file = InsertableRideFile {
                                         description: "temp_description".to_string(),
-                                        rides_id: ride.id,
+                                        ride_id: ride.id,
                                         file_name: full_file_path_and_name,
                                         file_type: "ride".to_string(),
                                     };
@@ -121,16 +162,19 @@ pub mod routes {
                                     match result {
                                         Ok(count) => {
                                             println!("{} InsertableRideFile Inserted", count);
+                                            Ok(Json(Status::Ok))
                                         }
                                         Err(e) => {
                                             println!("Error Inserting InsertableRideFile!");
                                             println!("{}", e);
+                                            Err(Status::InternalServerError)
                                         }
                                     }
                                 }
-                                Err(error) => {
+                                Err(e) => {
                                     println!("Failed to save file to {}", full_file_path_and_name);
-                                    println!("{}", error.to_string());
+                                    println!("{}", e.to_string());
+                                    return Err(Status::InternalServerError);
                                 }
                             };
                         }
@@ -143,15 +187,13 @@ pub mod routes {
 
             // TODO: Handle this error, here you can pass the error back via a Responder
             // https://rocket.rs/guide/v0.5/responses/#responder
-            Err(e) => {
-                println!("ERROR ADDING A RIDE!");
-                // return Err(Json("OK"));
+            Err(_) => {
+                println!("Error adding a ride!");
             }
         };
 
-        // TODO: Convert the form data into an InsertableRide and put it into the DB.
-        // TODO: Save the file somewhere, generate a pointer, and then update the db.
-        return Json("OK".to_string());
+        // Ride added?
+        Ok(Status::Ok)
     }
 
     // Save an InsertableRide to the DB.
@@ -173,10 +215,10 @@ pub mod routes {
         conn: &RidesDb,
         insertable_ride_file: InsertableRideFile,
     ) -> Result<usize, Error> {
-        use schema::ride_data::dsl::*;
+        use schema::ride_files::dsl::*;
         let result = conn
             .run(move |conn| {
-                diesel::insert_into(ride_data)
+                diesel::insert_into(ride_files)
                     .values(&insertable_ride_file)
                     .execute(conn)
             })
