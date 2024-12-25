@@ -59,83 +59,37 @@ fn test_multipart_without_files() {
     assert_eq!(response.status(), Status::Ok);
 }
 
-// TODO: Consider creating a Struct for this and implement some fields to create values?
-// Maybe you can store the name and values in a Vec.
-fn add_form_field(name: &str, value: &str, boundary: &str, form_data: &mut Vec<u8>) {
-    // Create our boundary
-    write!(form_data, "--{}\r\n", boundary).unwrap();
-    // Name
-    write!(
-        form_data,
-        "Content-Disposition: form-data; name=\"{}\"\r\n",
-        name
-    )
-    .unwrap();
-    write!(form_data, "\r\n").unwrap();
-    // Value
-    write!(form_data, "{}", value).unwrap();
-    write!(form_data, "\r\n").unwrap();
-}
+#[test]
+fn test_multipart_form_with_files() {
+    let mut form_data: Vec<u8> = Vec::new();
+    let boundary = "GADGET";
 
-// #[test]
-// fn test_multipart_form_with_files() {
-//     // **************************
-//     // Test our multipart form.
-//     // **************************
-//     // let ride_data_example = RideData {
-//     //     title: "ride_data_test".to_string(),
-//     //     description: "ride_data_description".to_string(),
-//     //     data: None, // We are not using data here...
-//     // };
-//
-//     // // We are instead using it here...
-//     // // Load our test file.
-//     // let test_file_path = "./storage/test_file.jpg";
-//     // let image_data = fs::read(test_file_path).expect("Failed to load test file.");
-//
-//     // // Craft a string that represents a Form with our test ride.
-//     // // This feels a little gross, but hopefully it works.
-//     // let form_boundary = "--boundary_rando_123";
-//     // let form_data = format!(
-//     //     "{}\nContent-Disposition: form-data; name=\"title\"\n\n{}\n{}\
-//     //     \nContent-Disposition: form-data; name=\"description\"\n\n{}\n{}\
-//     //     \nContent-Disposition: form-data; name=\"data\"; filename=\"test_file.jpg\"\n\
-//     //     Content-Type: image/jpeg\n\n{}\n{}",
-//     //     form_boundary,
-//     //     "ride_data_test", // title
-//     //     form_boundary,
-//     //     "ride_data_description", // description
-//     //     form_boundary,
-//     //     String::from_utf8_lossy(&image_data), // fake file data
-//     //     form_boundary
-//     // );
-//     // println!("*** Here is our stupid form that we are going to send...");
-//     // println!("{}", form_data);
-//     // println!("***");
-//
-//     let test_file_path = "./test/request_two_files.txt";
-//     let form_data = fs::read(test_file_path).expect("Failed to load test request file.");
-//
-//     let client = Client::tracked(rocket()).expect("valid rocket instance");
-//     let request = client
-//         .post("/api/ride_data/")
-//         // TODO Consider changing me.
-//         .header(ContentType::new(
-//             "multipart",
-//             "form-data; boundary=boundary_rando_123",
-//         ))
-//         .body(&form_data);
-//
-//     println!("Our request!!!");
-//
-//     let response = request.dispatch();
-//     println!(
-//         "********************\n
-//         ***** RESPONSE *****\n{}",
-//         String::from_utf8(form_data).expect("Invalid UTF-8 in test data file.")
-//     );
-//     assert_eq!(response.status(), Status::Ok);
-// }
+    // Add our fields.
+    add_form_field("title", "Test ride without data", boundary, &mut form_data);
+    add_form_field(
+        "description",
+        "This is the description of the test ride without data attached.  We have no files!",
+        boundary,
+        &mut form_data,
+    );
+
+    let test_file_path = "./storage/test_file.jpg";
+    let image_data = fs::read(test_file_path).expect("Failed to load test file.");
+
+    add_form_field_binary("image_1", &image_data, boundary, &mut form_data);
+
+    // End of our form.
+    write!(form_data, "--{}--\r\n", boundary).unwrap();
+
+    let client = Client::tracked(rocket()).expect("valid rocket instance");
+    let request = client
+        .post("/api/ride_data/")
+        .header(ContentType::new("multipart", "form-data; boundary=GADGET"))
+        .body(&form_data);
+
+    let response = request.dispatch();
+    assert_eq!(response.status(), Status::Ok);
+}
 
 // *** Helper functions used in testing. ***
 fn add_ride() -> (Client, ApiResponse<Ride>) {
@@ -216,4 +170,39 @@ fn verify_deleted_ride(client: Client) {
         Status::BadRequest,
         "Deleted item still exists."
     );
+}
+
+// TODO: Consider creating a Struct for this and implement some fields to create values?
+// Maybe you can store the name and values in a Vec.
+fn add_form_field(name: &str, value: &str, boundary: &str, form_data: &mut Vec<u8>) {
+    // Create our boundary
+    write!(form_data, "--{}\r\n", boundary).unwrap();
+    // Name
+    write!(
+        form_data,
+        "Content-Disposition: form-data; name=\"{}\"\r\n",
+        name
+    )
+    .unwrap();
+    write!(form_data, "\r\n").unwrap();
+    // Value
+    write!(form_data, "{}", value).unwrap();
+    write!(form_data, "\r\n").unwrap();
+}
+
+fn add_form_field_binary(name: &str, value: &Vec<u8>, boundary: &str, form_data: &mut Vec<u8>) {
+    // Create our boundary
+    write!(form_data, "--{}\r\n", boundary).unwrap();
+    // Name
+    write!(
+        form_data,
+        "Content-Disposition: form-data; name=\"{}\"\r\n",
+        name
+    )
+    .unwrap();
+    write!(form_data, "Content-Type: image/jpeg\r\n").unwrap();
+    write!(form_data, "\r\n").unwrap();
+    // Value
+    write!(form_data, "{}", String::from_utf8_lossy(&value)).unwrap();
+    write!(form_data, "\r\n").unwrap();
 }
