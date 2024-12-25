@@ -25,7 +25,7 @@ mod schema;
 #[cfg(test)]
 mod tests;
 
-use routes::routes::{delete_ride, get_health, get_ride, post_ride, post_ride_data};
+use routes::routes::{delete_ride, get_all_rides, get_health, get_ride, post_ride, post_ride_data};
 
 // Create our DB struct...
 #[database("rides_db")]
@@ -75,6 +75,13 @@ fn rocket() -> _ {
         .mount("/", FileServer::from("../client"))
         .mount(
             "/api/",
-            routes![get_ride, get_health, post_ride, post_ride_data, delete_ride],
+            routes![
+                get_ride,
+                get_all_rides,
+                get_health,
+                post_ride,
+                post_ride_data,
+                delete_ride
+            ],
         )
 }

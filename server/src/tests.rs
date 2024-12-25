@@ -15,6 +15,34 @@ fn check_health() {
     assert_eq!(response.into_string().unwrap(), "\"OK\"");
 }
 
+#[test]
+fn test_get_all_rides() {
+    // 1. Make our request to get all rides.
+    let client = Client::tracked(rocket()).expect("valid rocket instance");
+    let response = client
+        .get("/api/rides/")
+        .header(ContentType::JSON)
+        .dispatch();
+
+    match response.into_string() {
+        Some(response_string) => {
+            let returned_rides: ApiResponse<Vec<Ride>> =
+                rocket::serde::json::from_str(&response_string).unwrap();
+
+            println!(
+                "test_get_all_rides(): Number or rides returned: {}",
+                returned_rides.data.len()
+            );
+            // 2. Ensure that at least one of them exists...
+            assert_eq!(returned_rides.data.len() > 1, true);
+        }
+        None => {
+            // No clue what to do here.
+            println!("test_get_all_rides(): No rides returned from DB.");
+        }
+    }
+}
+
 // I know this is lazy...  However, I want to work on my app, not testing yet.
 // TODO: Come back and make this better.
 #[test]
