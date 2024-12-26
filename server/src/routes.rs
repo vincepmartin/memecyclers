@@ -129,7 +129,7 @@ pub async fn post_ride_data(
     };
 
     let ride_result = add_insertable_ride(&conn, temp_insertable_ride).await;
-    let _ride = match ride_result {
+    match ride_result {
         Ok(ride) => {
             println!("Added a ride.");
             println!("{:?}", ride);
@@ -181,8 +181,8 @@ pub async fn post_ride_data(
                             }
                             Err(e) => {
                                 println!("Failed to save file to {}", full_file_path_and_name);
-                                println!("{}", e.to_string());
-                                return Err(Status::InternalServerError);
+                                println!("{}", e);
+                                Err(Status::InternalServerError)
                             }
                         };
                     }
@@ -192,7 +192,6 @@ pub async fn post_ride_data(
                 }
             }
         }
-
         // TODO: Handle this error, here you can pass the error back via a Responder
         // https://rocket.rs/guide/v0.5/responses/#responder
         Err(_) => {
@@ -207,15 +206,12 @@ pub async fn post_ride_data(
 // Save an InsertableRide to the DB.
 async fn add_insertable_ride(conn: &RidesDb, ride: InsertableRide) -> QueryResult<Ride> {
     use schema::rides::dsl::*;
-    let result = conn
-        .run(move |conn| {
-            diesel::insert_into(rides)
-                .values(&ride)
-                .get_result::<Ride>(conn)
-        })
-        .await;
-
-    result
+    conn.run(move |conn| {
+        diesel::insert_into(rides)
+            .values(&ride)
+            .get_result::<Ride>(conn)
+    })
+    .await
 }
 
 // Save an InsertableRideFile to the DB.
@@ -224,12 +220,10 @@ async fn add_insertable_ride_file(
     insertable_ride_file: InsertableRideFile,
 ) -> Result<usize, Error> {
     use schema::ride_files::dsl::*;
-    let result = conn
-        .run(move |conn| {
-            diesel::insert_into(ride_files)
-                .values(&insertable_ride_file)
-                .execute(conn)
-        })
-        .await;
-    result
+    conn.run(move |conn| {
+        diesel::insert_into(ride_files)
+            .values(&insertable_ride_file)
+            .execute(conn)
+    })
+    .await
 }
