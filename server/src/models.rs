@@ -7,7 +7,7 @@ use rocket::{
 };
 
 /*
- * These two Structs are meant to wrap every response.
+ * This Struct is meant to wrap every response.
  */
 
 // ApiResponse struct acts as template for all responses.
@@ -23,10 +23,9 @@ pub struct ApiResponse<T> {
  */
 
 // Ride Struct maps to DB.
-#[derive(Queryable, Selectable)]
+#[derive(Selectable, Queryable, Deserialize, Serialize, Debug, PartialEq)]
 #[diesel(table_name = crate::schema::rides)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(crate = "rocket::serde")]
 pub struct Ride {
     pub id: i32,
@@ -53,7 +52,7 @@ pub struct RideFile {
 }
 
 // InsertableRide Struct
-#[derive(Insertable, Deserialize, Serialize, FromForm)]
+#[derive(Insertable, Deserialize, Serialize)]
 #[diesel(table_name = crate::schema::rides)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(crate = "rocket::serde")]
@@ -63,7 +62,7 @@ pub struct InsertableRide {
 }
 
 // InsertableRideFile
-#[derive(Insertable, Queryable, Selectable)]
+#[derive(Insertable, Queryable)]
 #[diesel(table_name = crate::schema::ride_files)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
