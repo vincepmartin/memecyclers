@@ -34,7 +34,7 @@ fn test_get_all_rides() {
                 returned_rides.data.len()
             );
             // 2. Ensure that at least one of them exists...
-            assert_eq!(returned_rides.data.len() > 1, true);
+            assert!(returned_rides.data.len() > 1);
         }
         None => {
             // No clue what to do here.
@@ -218,7 +218,7 @@ fn add_form_field(name: &str, value: &str, boundary: &str, form_data: &mut Vec<u
     write!(form_data, "\r\n").unwrap();
 }
 
-fn add_form_field_binary(name: &str, value: &Vec<u8>, boundary: &str, form_data: &mut Vec<u8>) {
+fn add_form_field_binary(name: &str, value: &[u8], boundary: &str, form_data: &mut Vec<u8>) {
     // Create our boundary
     write!(form_data, "--{}\r\n", boundary).unwrap();
     // Name
@@ -231,6 +231,6 @@ fn add_form_field_binary(name: &str, value: &Vec<u8>, boundary: &str, form_data:
     write!(form_data, "Content-Type: image/jpeg\r\n").unwrap();
     write!(form_data, "\r\n").unwrap();
     // Value
-    write!(form_data, "{}", String::from_utf8_lossy(&value)).unwrap();
+    write!(form_data, "{}", String::from_utf8_lossy(value)).unwrap();
     write!(form_data, "\r\n").unwrap();
 }

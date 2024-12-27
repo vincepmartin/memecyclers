@@ -76,7 +76,7 @@ pub async fn delete_ride(conn: RidesDb, ride_id: i32) -> Result<Json<ApiResponse
 // Health check returns OK if everything is OK.
 #[get("/health")]
 pub async fn get_health() -> Json<String> {
-    return Json("OK".to_string());
+    Json("OK".to_string())
 }
 
 // TODO: Implement this.
