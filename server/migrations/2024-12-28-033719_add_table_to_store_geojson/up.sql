@@ -1,4 +1,4 @@
--- Enable GIS
+-- Enable GIS.
 CREATE EXTENSION postgis;
 
 -- Store the geoJSON converted from the FIT files.
