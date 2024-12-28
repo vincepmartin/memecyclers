@@ -17,8 +17,29 @@ fn check_health() {
 
 #[test]
 fn test_get_all_rides() {
-    // 1. Make our request to get all rides.
+    // 0. We have to make sure we have a ride in the DB.
+    let input_ride = InsertableRide {
+        title: "test_ride_title".to_string(),
+        description: "test_ride_description.".to_string(),
+    };
+
     let client = Client::tracked(rocket()).expect("valid rocket instance");
+
+    // Add item 1.
+    client
+        .post("/api/ride/")
+        .header(ContentType::JSON)
+        .body(rocket::serde::json::to_string(&input_ride).unwrap())
+        .dispatch();
+
+    // Add item 2.
+    client
+        .post("/api/ride/")
+        .header(ContentType::JSON)
+        .body(rocket::serde::json::to_string(&input_ride).unwrap())
+        .dispatch();
+
+    // 1. Make our request to get all rides.
     let response = client
         .get("/api/rides/")
         .header(ContentType::JSON)

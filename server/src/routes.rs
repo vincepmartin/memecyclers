@@ -138,6 +138,7 @@ pub async fn post_ride_data(
             match &mut ride_form.data {
                 Some(data_files) => {
                     for file in data_files {
+                        // TODO: Add logic here to handle .fit files.
                         let tmp_file_path = "storage";
                         let tmp_file_name = Uuid::new_v4().to_string();
                         let tmp_file_ext = "jpg";
@@ -151,11 +152,15 @@ pub async fn post_ride_data(
                             format!("{}/{}.{}", tmp_file_path, tmp_file_name, tmp_file_ext)
                         };
 
+                        // TODO: Write function to store the file in the DB as JSON after
+                        // converting it to geoJSON.
+
                         // We can use the '_' to basically ignore this value...  As we don't
                         // handle anything from this persist_to function.
                         let _ = match file.persist_to(&full_file_path_and_name).await {
                             Ok(_) => {
                                 println!("Saved file to {}", full_file_path_and_name);
+                                // TODO: Add logic here to handle .fit files.
                                 let insertable_ride_file = InsertableRideFile {
                                     description: "temp_description".to_string(),
                                     ride_id: ride.id,
