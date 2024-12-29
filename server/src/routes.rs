@@ -7,6 +7,7 @@ use crate::RidesDb;
 use diesel::{
     result::Error, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
 };
+use rocket::http::ContentType;
 use uuid::Uuid;
 
 // Return a particular ride based on id.
@@ -129,6 +130,7 @@ pub async fn post_ride_data(
     };
 
     let ride_result = add_insertable_ride(&conn, temp_insertable_ride).await;
+
     match ride_result {
         Ok(ride) => {
             println!("Added a ride.");
@@ -141,7 +143,18 @@ pub async fn post_ride_data(
                         // TODO: Add logic here to handle .fit files.
                         let tmp_file_path = "storage";
                         let tmp_file_name = Uuid::new_v4().to_string();
+
+                        // TODO: set this file extension dynamically or grab it from the file.
                         let tmp_file_ext = "jpg";
+                        let tmp_file_content_type_opt = file.content_type();
+
+                        let tmp_file_content_type = match tmp_file_content_type_opt {
+                            Some(t) => {
+                                println!("*** tmp_file_content_type: {}", t);
+                                t
+                            }
+                            None => &ContentType::Binary,
+                        };
 
                         let full_file_path_and_name = if let Some(form_file_name) = &file.name() {
                             format!(
