@@ -140,20 +140,19 @@ pub async fn post_ride_data(
             match &mut ride_form.data {
                 Some(data_files) => {
                     for file in data_files {
-                        // TODO: Add logic here to handle .fit files.
                         let tmp_file_path = "storage";
                         let tmp_file_name = Uuid::new_v4().to_string();
 
-                        // TODO: set this file extension dynamically or grab it from the file.
-                        let tmp_file_ext = "jpg";
-                        let tmp_file_content_type_opt = file.content_type();
-
-                        let tmp_file_content_type = match tmp_file_content_type_opt {
-                            Some(t) => {
-                                println!("*** tmp_file_content_type: {}", t);
-                                t
-                            }
-                            None => &ContentType::Binary,
+                        // TODO: Clean this up, it's too crazy looking!
+                        // TODO: Consider bailing here if we don't have an extension. In theory
+                        // this should not run, as we can setup the guards on it so that it will by
+                        // default drop or rather, only allow certain extensions.
+                        let tmp_file_ext = match file.content_type() {
+                            Some(i) => match i.extension() {
+                                Some(i) => i.as_str(),
+                                None => "unk",
+                            },
+                            None => "unk",
                         };
 
                         let full_file_path_and_name = if let Some(form_file_name) = &file.name() {

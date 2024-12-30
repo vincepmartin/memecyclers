@@ -24,6 +24,7 @@ mod routes;
 mod schema;
 #[cfg(test)]
 mod tests;
+mod utils;
 
 // Get my routes.
 use routes::{delete_ride, get_all_rides, get_health, get_ride, post_ride, post_ride_data};

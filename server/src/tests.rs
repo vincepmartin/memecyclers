@@ -1,5 +1,6 @@
 use crate::models::{ApiResponse, InsertableRide, Ride};
 use crate::rocket;
+use crate::utils::get_geo_json_from_fit;
 use std::fs;
 use std::io::Write;
 
@@ -125,7 +126,7 @@ fn test_multipart_form_with_files() {
     let test_file_path = "./storage/test_file.jpg";
     let image_data = fs::read(test_file_path).expect("Failed to load test file.");
 
-    add_form_field_binary("image_1", &image_data, boundary, &mut form_data);
+    add_form_field_binary("image_1.jpg", &image_data, boundary, &mut form_data);
 
     // End of our form.
     write!(form_data, "--{}--\r\n", boundary).unwrap();
@@ -138,6 +139,13 @@ fn test_multipart_form_with_files() {
 
     let response = request.dispatch();
     assert_eq!(response.status(), Status::Ok);
+}
+
+#[test]
+fn fit_file_converts_to_json() {
+    let test_file_path = "./storage/test.fit".to_string();
+    let results = get_geo_json_from_fit(test_file_path).expect("Can't load test fit file.");
+    assert_eq!(results, "OK_derp".to_string());
 }
 
 // *** Helper functions used in testing. ***
