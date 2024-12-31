@@ -1,8 +1,6 @@
 use fitparser;
-use fitparser::de::{from_reader_with_options, DecodeOption};
-use std::collections::HashSet;
+use fitparser::de::{from_reader, from_reader_with_options, DecodeOption};
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::Error;
 
 // Convert into GeoJSON
@@ -15,13 +13,10 @@ pub fn get_geo_json_from_fit(fit_file_path: String) -> Result<String, Error> {
         fitparser::profile::VERSION
     );
 
-    let mut opts = HashSet::new();
-    opts.insert(DecodeOption::SkipHeaderCrcValidation);
-    opts.insert(DecodeOption::SkipDataCrcValidation);
-
     match File::open(fit_file_path) {
         Ok(mut fp) => {
-            match from_reader_with_options(&mut fp, &opts) {
+            // match from_reader_with_options(&mut fp, &opts) {
+            match from_reader(&mut fp) {
                 Ok(fit_data_records) => {
                     println!(
                         "We have {} Vec records in our FitDataRecords",
