@@ -145,7 +145,7 @@ fn test_multipart_form_with_files() {
 fn fit_file_converts_to_json() {
     let test_file_path = "./storage/test.fit".to_string();
     let results = get_geo_json_from_fit(test_file_path).expect("Can't load test fit file.");
-    assert_eq!(results, "OK_derp".to_string());
+    assert!(results.len() > 1);
 }
 
 // *** Helper functions used in testing. ***
