@@ -1,47 +1,30 @@
-use crate::utils::db::{add_insertable_ride, add_insertable_ride_file};
-use crate::utils::helpers::get_geo_json_from_fit;
-
 use crate::models::{
-    ApiResponse, InsertableRide, InsertableRideFile, Ride, RideData, RideFile, RideWithFiles,
+    ApiResponse, InsertableRide, InsertableRideFile, Ride, RideData, RideWithFiles,
 };
 use crate::rocket::{form::Form, http::Status, serde::json::Json};
 use crate::schema;
+use crate::utils::db::{add_insertable_ride, add_insertable_ride_file, get_ride, get_ride_file};
+use crate::utils::helpers::get_geo_json_from_fit;
 use crate::RidesDb;
+
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
+// TODO: Use me to figure out what type of file is being uploaded...
 use rocket::http::ContentType;
 use uuid::Uuid;
 
 // Return a particular ride based on id.
 #[get("/ride/<ride_id>")]
-pub async fn get_ride(
+pub async fn fetch_ride(
     conn: RidesDb,
     ride_id: i32,
 ) -> Result<Json<ApiResponse<RideWithFiles>>, Status> {
-    use schema::rides::dsl::*;
-
     // Our first query gets the ride itself from the DB.
-    let ride_query = conn
-        .run(move |conn| {
-            rides
-                .filter(id.eq(ride_id))
-                .select(Ride::as_select())
-                .first(conn)
-        })
-        .await;
-
-    match ride_query {
+    match get_ride(&conn, ride_id).await {
         Ok(ride) => {
+            // TODO: Create get_ride_file(ride_id) in the db module.
             // Our second query returns the ride_files that are associated with the item
             // returned in the first query.
-            use schema::ride_files::dsl::*;
-            let ride_files_query = conn
-                .run(move |conn| {
-                    ride_files
-                        .filter(ride_id.eq(ride.id))
-                        .load::<RideFile>(conn)
-                })
-                .await;
-            match ride_files_query {
+            match get_ride_file(&conn, ride_id).await {
                 Ok(ride_files_result) => Ok(Json(ApiResponse {
                     data: RideWithFiles {
                         id: ride.id,
