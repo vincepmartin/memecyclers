@@ -23,6 +23,7 @@ pub fn get_geo_json_from_fit(fit_file_path: String) -> Result<Vec<FitDataRecord>
         fit_data_records.len()
     );
 
+    // Print out all of our logs, why not?
     for r in &fit_data_records {
         println!("{:#?}", r);
     }

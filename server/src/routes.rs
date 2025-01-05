@@ -1,3 +1,5 @@
+use crate::utils::get_geo_json_from_fit;
+
 use crate::models::{
     ApiResponse, InsertableRide, InsertableRideFile, Ride, RideData, RideFile, RideWithFiles,
 };
@@ -104,7 +106,7 @@ pub async fn post_ride(
     conn: RidesDb,
     ride: Json<InsertableRide>,
 ) -> Result<Json<ApiResponse<Ride>>, Status> {
-    let result = add_insertable_ride(&conn, ride.into_inner()).await;
+    let result = add_insertable_ride(&conn, &ride.into_inner()).await;
 
     match result {
         Ok(ride) => Ok(Json(ApiResponse { data: ride })),
@@ -129,7 +131,7 @@ pub async fn post_ride_data(
         description: ride_form.description.clone(),
     };
 
-    let ride_result = add_insertable_ride(&conn, temp_insertable_ride).await;
+    let ride_result = add_insertable_ride(&conn, &temp_insertable_ride).await;
 
     match ride_result {
         Ok(ride) => {
@@ -166,13 +168,14 @@ pub async fn post_ride_data(
 
                         // TODO: Write function to store the file in the DB as JSON after
                         // converting it to geoJSON.
-
                         // We can use the '_' to basically ignore this value...  As we don't
                         // handle anything from this persist_to function.
                         let _ = match file.persist_to(&full_file_path_and_name).await {
                             Ok(_) => {
                                 println!("Saved file to {}", full_file_path_and_name);
                                 // TODO: Add logic here to handle .fit files.
+                                // - figure out the file type, with both options probably  being
+
                                 let insertable_ride_file = InsertableRideFile {
                                     description: "temp_description".to_string(),
                                     ride_id: ride.id,
@@ -182,11 +185,31 @@ pub async fn post_ride_data(
 
                                 // Persist the InsertableRideFile
                                 let result =
-                                    add_insertable_ride_file(&conn, insertable_ride_file).await;
+                                    add_insertable_ride_file(&conn, &insertable_ride_file).await;
 
                                 match result {
                                     Ok(count) => {
                                         println!("{} InsertableRideFile Inserted", count);
+                                        if insertable_ride_file.file_type.eq("fit") {
+                                            match get_geo_json_from_fit(
+                                                insertable_ride_file.file_name,
+                                            ) {
+                                                Ok(fit_data_records) => {
+                                                    // Print out all of our logs, why not?
+                                                    println!("Fit file data records!");
+                                                    for r in &fit_data_records {
+                                                        println!("{:#?}", &r);
+                                                    }
+
+                                                    // Insert the data you got from this into the
+                                                    // DB.
+                                                }
+                                                Err(e) => {
+                                                    println!("Error parsing FIT file!");
+                                                    println!("{}", e);
+                                                }
+                                            };
+                                        }
                                         Ok(Json(Status::Ok))
                                     }
                                     Err(e) => {
@@ -221,8 +244,9 @@ pub async fn post_ride_data(
 }
 
 // Save an InsertableRide to the DB.
-async fn add_insertable_ride(conn: &RidesDb, ride: InsertableRide) -> QueryResult<Ride> {
+async fn add_insertable_ride(conn: &RidesDb, ride: &InsertableRide) -> QueryResult<Ride> {
     use schema::rides::dsl::*;
+    let ride = ride.clone();
     conn.run(move |conn| {
         diesel::insert_into(rides)
             .values(&ride)
@@ -234,12 +258,13 @@ async fn add_insertable_ride(conn: &RidesDb, ride: InsertableRide) -> QueryResul
 // Save an InsertableRideFile to the DB.
 async fn add_insertable_ride_file(
     conn: &RidesDb,
-    insertable_ride_file: InsertableRideFile,
+    insertable_ride_file: &InsertableRideFile,
 ) -> Result<usize, Error> {
     use schema::ride_files::dsl::*;
+    let insertable_ride_file = insertable_ride_file.clone();
     conn.run(move |conn| {
         diesel::insert_into(ride_files)
-            .values(&insertable_ride_file)
+            .values(insertable_ride_file)
             .execute(conn)
     })
     .await
