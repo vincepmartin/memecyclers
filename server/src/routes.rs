@@ -1,4 +1,5 @@
-use crate::utils::get_geo_json_from_fit;
+use crate::utils::db::{add_insertable_ride, add_insertable_ride_file};
+use crate::utils::helpers::get_geo_json_from_fit;
 
 use crate::models::{
     ApiResponse, InsertableRide, InsertableRideFile, Ride, RideData, RideFile, RideWithFiles,
@@ -6,9 +7,7 @@ use crate::models::{
 use crate::rocket::{form::Form, http::Status, serde::json::Json};
 use crate::schema;
 use crate::RidesDb;
-use diesel::{
-    result::Error, ExpressionMethods, QueryDsl, QueryResult, RunQueryDsl, SelectableHelper,
-};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use rocket::http::ContentType;
 use uuid::Uuid;
 
@@ -241,31 +240,4 @@ pub async fn post_ride_data(
 
     // Ride added?
     Ok(Status::Ok)
-}
-
-// Save an InsertableRide to the DB.
-async fn add_insertable_ride(conn: &RidesDb, ride: &InsertableRide) -> QueryResult<Ride> {
-    use schema::rides::dsl::*;
-    let ride = ride.clone();
-    conn.run(move |conn| {
-        diesel::insert_into(rides)
-            .values(&ride)
-            .get_result::<Ride>(conn)
-    })
-    .await
-}
-
-// Save an InsertableRideFile to the DB.
-async fn add_insertable_ride_file(
-    conn: &RidesDb,
-    insertable_ride_file: &InsertableRideFile,
-) -> Result<usize, Error> {
-    use schema::ride_files::dsl::*;
-    let insertable_ride_file = insertable_ride_file.clone();
-    conn.run(move |conn| {
-        diesel::insert_into(ride_files)
-            .values(insertable_ride_file)
-            .execute(conn)
-    })
-    .await
 }

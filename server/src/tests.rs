@@ -1,6 +1,6 @@
 use crate::models::{ApiResponse, InsertableRide, Ride};
 use crate::rocket;
-use crate::utils::get_geo_json_from_fit;
+use crate::utils::helpers::get_geo_json_from_fit;
 use std::fs;
 use std::io::Write;
 
