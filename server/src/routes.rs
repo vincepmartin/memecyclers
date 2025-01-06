@@ -8,8 +8,6 @@ use crate::utils::helpers::get_geo_json_from_fit;
 use crate::RidesDb;
 
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
-// TODO: Use me to figure out what type of file is being uploaded...
-use rocket::http::ContentType;
 use uuid::Uuid;
 
 // Return a particular ride based on id.
@@ -21,7 +19,6 @@ pub async fn fetch_ride(
     // Our first query gets the ride itself from the DB.
     match get_ride(&conn, ride_id).await {
         Ok(ride) => {
-            // TODO: Create get_ride_file(ride_id) in the db module.
             // Our second query returns the ride_files that are associated with the item
             // returned in the first query.
             match get_ride_file(&conn, ride_id).await {
@@ -107,15 +104,15 @@ pub async fn post_ride_data(
     println!("{}", ride_form.description);
     println!("Data field debug: {:?}", ride_form.data.is_some());
 
-    // Handle creation of the InsertableRide.
-    let temp_insertable_ride = InsertableRide {
-        title: ride_form.title.clone(),
-        description: ride_form.description.clone(),
-    };
-
-    let ride_result = add_insertable_ride(&conn, &temp_insertable_ride).await;
-
-    match ride_result {
+    match add_insertable_ride(
+        &conn,
+        &InsertableRide {
+            title: ride_form.title.clone(),
+            description: ride_form.description.clone(),
+        },
+    )
+    .await
+    {
         Ok(ride) => {
             println!("Added a ride.");
             println!("{:?}", ride);
@@ -126,17 +123,26 @@ pub async fn post_ride_data(
                     for file in data_files {
                         let tmp_file_path = "storage";
                         let tmp_file_name = Uuid::new_v4().to_string();
-
-                        // TODO: Clean this up, it's too crazy looking!
-                        // TODO: Consider bailing here if we don't have an extension. In theory
-                        // this should not run, as we can setup the guards on it so that it will by
-                        // default drop or rather, only allow certain extensions.
-                        let tmp_file_ext = match file.content_type() {
-                            Some(i) => match i.extension() {
-                                Some(i) => i.as_str(),
-                                None => "unk",
-                            },
-                            None => "unk",
+                        let (tmp_file_ext, tmp_file_type) = match file.content_type() {
+                            Some(content_type) => {
+                                let file_ext = content_type.extension().map_or("unk", |ext| {
+                                    // TODO: This feels a bit janky...
+                                    // ContentType will give my uploaded .fit files a .bin ext,
+                                    // change this back to .fit.
+                                    if ext == "bin" {
+                                        "fit"
+                                    } else {
+                                        ext.as_str()
+                                    }
+                                });
+                                let file_type = if content_type.is_png() || content_type.is_jpeg() {
+                                    "image"
+                                } else {
+                                    "ride"
+                                };
+                                (file_ext, file_type)
+                            }
+                            None => ("unk", "ride"),
                         };
 
                         let full_file_path_and_name = if let Some(form_file_name) = &file.name() {
@@ -157,22 +163,18 @@ pub async fn post_ride_data(
                                 println!("Saved file to {}", full_file_path_and_name);
                                 // TODO: Add logic here to handle .fit files.
                                 // - figure out the file type, with both options probably  being
-
                                 let insertable_ride_file = InsertableRideFile {
                                     description: "temp_description".to_string(),
                                     ride_id: ride.id,
                                     file_name: full_file_path_and_name,
-                                    file_type: "ride".to_string(),
+                                    file_type: tmp_file_type.to_string(),
                                 };
 
                                 // Persist the InsertableRideFile
-                                let result =
-                                    add_insertable_ride_file(&conn, &insertable_ride_file).await;
-
-                                match result {
+                                match add_insertable_ride_file(&conn, &insertable_ride_file).await {
                                     Ok(count) => {
                                         println!("{} InsertableRideFile Inserted", count);
-                                        if insertable_ride_file.file_type.eq("fit") {
+                                        if insertable_ride_file.file_type.eq("ride") {
                                             match get_geo_json_from_fit(
                                                 insertable_ride_file.file_name,
                                             ) {
