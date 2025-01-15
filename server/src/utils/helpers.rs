@@ -1,5 +1,9 @@
 use fitparser::FitDataRecord;
+use rocket::serde::json;
+use rocket::serde::Serialize;
+
 use std::fs::File;
+use std::io::Write;
 
 // Convert into GeoJSON
 pub fn storage_geo_json_in_db() {}
@@ -17,4 +21,18 @@ pub fn get_geo_json_from_fit(fit_file_path: String) -> Result<Vec<FitDataRecord>
         fitparser::from_reader(&mut fp).map_err(|e| std::io::Error::other(e.to_string()))?;
 
     Ok(fit_data_records)
+}
+
+// Write a string to a file.
+pub fn write_vec_to_file<T>(
+    vec_content: Vec<T>,
+    file_name: &str,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    T: Serialize,
+{
+    let string_of_vec_data = json::to_pretty_string(&vec_content)?;
+    let mut fp = File::create(file_name)?;
+    fp.write_all(string_of_vec_data.as_bytes())?;
+    Ok(())
 }

@@ -4,7 +4,7 @@ use crate::models::{
 use crate::rocket::{form::Form, http::Status, serde::json::Json};
 use crate::schema;
 use crate::utils::db::{add_insertable_ride, add_insertable_ride_file, get_ride, get_ride_file};
-use crate::utils::helpers::get_geo_json_from_fit;
+use crate::utils::helpers::{get_geo_json_from_fit, write_vec_to_file};
 use crate::RidesDb;
 
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
@@ -185,6 +185,21 @@ pub async fn post_ride_data(
                                                         println!("{:#?}", &r);
                                                     }
 
+                                                    // TODO: For now just write this to a file so
+                                                    // that you can investigate it to figure out
+                                                    // what the heck you actually need to pull out
+                                                    // of it.
+                                                    match write_vec_to_file(
+                                                        fit_data_records,
+                                                        "output.txt",
+                                                    ) {
+                                                        Ok(_) => {
+                                                            println!("File written!")
+                                                        }
+                                                        Err(e) => {
+                                                            println!("We have an error {}", e);
+                                                        }
+                                                    }
                                                     // Insert the data you got from this into the
                                                     // DB.
                                                 }
