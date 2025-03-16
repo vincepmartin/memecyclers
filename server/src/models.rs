@@ -52,7 +52,7 @@ pub struct RideFile {
 }
 
 // InsertableRide Struct
-#[derive(Insertable, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Insertable, Serialize)]
 #[diesel(table_name = crate::schema::rides)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[serde(crate = "rocket::serde")]
@@ -62,7 +62,7 @@ pub struct InsertableRide {
 }
 
 // InsertableRideFile
-#[derive(Insertable, Queryable)]
+#[derive(Clone, Insertable, Queryable)]
 #[diesel(table_name = crate::schema::ride_files)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[derive(Deserialize, Serialize, Debug, PartialEq)]

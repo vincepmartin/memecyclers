@@ -1,5 +1,6 @@
 use crate::models::{ApiResponse, InsertableRide, Ride};
 use crate::rocket;
+use crate::utils::helpers::get_geo_json_from_fit;
 use std::fs;
 use std::io::Write;
 
@@ -17,8 +18,29 @@ fn check_health() {
 
 #[test]
 fn test_get_all_rides() {
-    // 1. Make our request to get all rides.
+    // 0. We have to make sure we have a ride in the DB.
+    let input_ride = InsertableRide {
+        title: "test_ride_title".to_string(),
+        description: "test_ride_description.".to_string(),
+    };
+
     let client = Client::tracked(rocket()).expect("valid rocket instance");
+
+    // Add item 1.
+    client
+        .post("/api/ride/")
+        .header(ContentType::JSON)
+        .body(rocket::serde::json::to_string(&input_ride).unwrap())
+        .dispatch();
+
+    // Add item 2.
+    client
+        .post("/api/ride/")
+        .header(ContentType::JSON)
+        .body(rocket::serde::json::to_string(&input_ride).unwrap())
+        .dispatch();
+
+    // 1. Make our request to get all rides.
     let response = client
         .get("/api/rides/")
         .header(ContentType::JSON)
@@ -104,7 +126,7 @@ fn test_multipart_form_with_files() {
     let test_file_path = "./storage/test_file.jpg";
     let image_data = fs::read(test_file_path).expect("Failed to load test file.");
 
-    add_form_field_binary("image_1", &image_data, boundary, &mut form_data);
+    add_form_field_binary("image_1.jpg", &image_data, boundary, &mut form_data);
 
     // End of our form.
     write!(form_data, "--{}--\r\n", boundary).unwrap();
@@ -117,6 +139,13 @@ fn test_multipart_form_with_files() {
 
     let response = request.dispatch();
     assert_eq!(response.status(), Status::Ok);
+}
+
+#[test]
+fn fit_file_converts_to_json() {
+    let test_file_path = "./storage/test.fit".to_string();
+    let results = get_geo_json_from_fit(test_file_path).expect("Can't load test fit file.");
+    assert!(results.len() > 1);
 }
 
 // *** Helper functions used in testing. ***
